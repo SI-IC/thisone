@@ -10,4 +10,5 @@ export interface ClaudeFeedbackOptions {
  * the in-process bridge (HTTP + WebSocket). Phase 1 ships a stub so the build
  * pipeline is exercised end-to-end; the real implementation lands in Phase 4.
  */
-export default function claudeFeedback(_options?: ClaudeFeedbackOptions): Plugin;
+export declare function claudeFeedback(_options?: ClaudeFeedbackOptions): Plugin;
+export default claudeFeedback;

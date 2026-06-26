@@ -5,6 +5,8 @@ function claudeFeedback(_options = {}) {
     apply: "serve"
   };
 }
+var index_default = claudeFeedback;
 export {
-  claudeFeedback as default
+  claudeFeedback,
+  index_default as default
 };

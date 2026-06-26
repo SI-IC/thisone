@@ -12,11 +12,11 @@ export interface ClaudeFeedbackOptions {
  * the in-process bridge (HTTP + WebSocket). Phase 1 ships a stub so the build
  * pipeline is exercised end-to-end; the real implementation lands in Phase 4.
  */
-export default function claudeFeedback(
-  _options: ClaudeFeedbackOptions = {},
-): Plugin {
+export function claudeFeedback(_options: ClaudeFeedbackOptions = {}): Plugin {
   return {
     name: "vite-plugin-claude-feedback",
     apply: "serve",
   };
 }
+
+export default claudeFeedback;
