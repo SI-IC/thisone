@@ -1,3 +1,5 @@
 node_modules/
 .claude-feedback/
 *.log
+
+# NOTE: dist/ is intentionally committed (github-install needs no build toolchain).

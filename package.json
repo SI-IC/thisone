@@ -1,0 +1,49 @@
+{
+  "name": "vite-plugin-claude-feedback",
+  "version": "0.0.1",
+  "description": "Send element-anchored feedback from a Vue+Vite dev preview to Claude Code (Alt+C).",
+  "type": "module",
+  "license": "MIT",
+  "author": "SI-IC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SI-IC/vue-pick-problem-skill.git"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "claude-plugin"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "vitest",
+    "test:run": "vitest run --passWithNoTests",
+    "check:versions": "node scripts/check-versions.mjs",
+    "release": "node scripts/release.mjs",
+    "prepare": "husky"
+  },
+  "peerDependencies": {
+    "vite": ">=5"
+  },
+  "devDependencies": {
+    "@types/node": "24.12.2",
+    "@types/ws": "8.18.1",
+    "@vitejs/plugin-vue": "6.0.3",
+    "esbuild": "0.27.2",
+    "happy-dom": "20.6.1",
+    "husky": "9.1.7",
+    "typescript": "5.9.3",
+    "vite": "7.3.1",
+    "vitest": "4.0.18",
+    "ws": "8.19.0"
+  },
+  "packageManager": "pnpm@10.33.0"
+}

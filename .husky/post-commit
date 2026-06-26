@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Tag each commit with its version. Idempotent: if the tag already exists and
+# points elsewhere we leave it; we never fail the commit.
+ver="$(node -p "require('./package.json').version")"
+tag="v${ver}"
+
+if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null 2>&1; then
+  exit 0
+fi
+
+git tag "${tag}" >/dev/null 2>&1 || true

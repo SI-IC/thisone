@@ -1,0 +1,15 @@
+{
+  "name": "vue-pick-problem-skill",
+  "owner": {
+    "name": "SI-IC"
+  },
+  "description": "Send element-anchored feedback from a Vue+Vite dev preview to Claude Code",
+  "plugins": [
+    {
+      "name": "claude-feedback",
+      "source": "./claude-plugin",
+      "description": "Alt+C in the dev preview to send Claude the page URL, picked element, its Vue component, and console — pull-based via MCP.",
+      "version": "0.0.1"
+    }
+  ]
+}
