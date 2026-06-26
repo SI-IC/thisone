@@ -49,8 +49,39 @@ Installed into Claude Code (and distributable through the conveyor plugin system
 - `mcp-server.mjs` — a thin stdio MCP server that reads `.claude-feedback/bridge.json`, connects to the bridge over localhost HTTP, and exposes tools to Claude. It owns no state itself.
 - `skills/claude-feedback/SKILL.md` — tells Claude when/how to pull feedback and act on it.
 - `commands/feedback.md` — `/feedback` slash command: fetch and summarize pending feedback, then start working on it.
+- `commands/feedback-setup.md` — `/feedback:setup` slash command: wire the Vite plugin into the current project (see Installation).
 
 **Why stdio MCP in the CC plugin (not HTTP MCP in the Vite process):** stdio is the most robust transport for a bundled CC plugin — Claude owns the MCP process lifecycle, and there is no HTTP-URL/port coupling in the MCP registration. The dynamic bridge port is discovered via the `bridge.json` file instead.
+
+## Installation (how a user enables this in a project)
+
+Two artifacts, reduced to **one enable + one command**. No npm-registry publishing — the Vite plugin installs directly from GitHub.
+
+### Step 1 — enable the Claude Code plugin `claude-feedback`
+
+Standard conveyor flow: add `claude-feedback` to the plugin library (`/plugins`) → it becomes a per-project override → on container start `PluginInstallService.ensureProjectPlugins` installs it into the project's Claude. The stdio MCP server, the `claude-feedback` skill, and the `/feedback` + `/feedback:setup` commands are then available. No manual steps beyond the normal plugin toggle.
+
+### Step 2 — run `/feedback:setup` in the chat
+
+The command (idempotent, Claude executes it) does:
+
+1. Detect the project: read `package.json` + `vite.config.{ts,js,mjs}`; confirm `vue` + `vite` are present. Abort with a clear message otherwise.
+2. Install the Vite plugin from GitHub (no npm registry):
+   ```bash
+   pnpm add -D github:<owner>/vue-pick-problem-skill#<tag>
+   ```
+   (falls back to `npm i -D` / `yarn add -D` based on the project's lockfile).
+3. Patch `vite.config` idempotently: add `import claudeFeedback from 'vite-plugin-claude-feedback'` and insert `claudeFeedback()` into the `plugins: []` array. If already present, do nothing.
+4. Instruct the user to restart the dev server.
+
+Result for the user: **enable `claude-feedback` in the library → say `/feedback:setup` → press Alt+C in the preview.**
+
+### GitHub-install constraints (design consequences)
+
+- **Prebuilt `dist/` is committed to the repo.** `package.json` `exports`/`main` point at `dist/`, so a `github:` install needs no build toolchain in the container (fast, deterministic). A `prepare` build step is intentionally **not** used.
+- The repo root **is** the npm package (`vite-plugin-claude-feedback`); the CC plugin lives in `claude-plugin/` and is shipped via the marketplace, not the git-install. `github:<owner>/<repo>` therefore resolves the root `package.json` correctly.
+- Installs are pinned to a **tag** (`#v0.1.0`) for reproducibility; `/feedback:setup` carries the current tag.
+- **Repo visibility:** a **public** repo installs with no auth. A private repo requires git credentials (token/SSH) present in the container — recommend public unless the repo holds secrets.
 
 ## Architecture
 
@@ -197,6 +228,7 @@ At client init (before app code where possible), wrap `console.{log,info,warn,er
 ```
 vue-pick-problem-skill/
   package.json                       # vite-plugin-claude-feedback (peer: vite >=5)
+  dist/                              # prebuilt, committed (so github: install needs no build)
   src/plugin/index.ts
   src/server/{bridge.ts,queue.ts}
   src/client/{index.ts,overlay.ts,resolve-component.ts,console-tap.ts,snapshot.ts}
@@ -204,10 +236,13 @@ vue-pick-problem-skill/
     .claude-plugin/plugin.json
     mcp-server.mjs
     skills/claude-feedback/SKILL.md
-    commands/feedback.md
+    commands/feedback.md             # /feedback — pull & act on feedback
+    commands/feedback-setup.md       # /feedback:setup — wire Vite plugin into project
   examples/demo-app/                  # Vue 3 + Vite + Pinia for e2e
   tests/{unit,e2e}/
 ```
+
+`dist/` is a committed build artifact (not in `.gitignore`) because the GitHub install path depends on it.
 
 ## Dependency Versions (pin latest at implementation, verified 2026-06-26)
 
