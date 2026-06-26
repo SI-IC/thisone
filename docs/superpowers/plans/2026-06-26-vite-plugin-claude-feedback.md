@@ -60,7 +60,7 @@ TDD-дисциплина: Ф2, Ф3, Ф5 — чистая логика (parser/tr
 
 ## Фаза 1 — Инфра: scaffold, build, авто-версионность, marketplace, README
 
-<!-- circle: status=pending order=10 deps=[] autonomy=auto obstacle="" -->
+<!-- circle: status=done order=10 deps=[] autonomy=auto obstacle="" -->
 
 **Цель фазы:** рабочий каркас репо — npm-пакет с собираемым `dist/`, авто-версионность через husky, marketplace-манифест, README. Всё последующее строится на этом.
 
@@ -103,7 +103,7 @@ TDD-дисциплина: Ф2, Ф3, Ф5 — чистая логика (parser/tr
 
 ## Фаза 2 — Server: bridge + queue
 
-<!-- circle: status=pending order=20 deps=[1] autonomy=auto obstacle="" -->
+<!-- circle: status=done order=20 deps=[1] autonomy=auto obstacle="" -->
 
 **Цель фазы:** `src/server/bridge.ts` + `src/server/queue.ts` — HTTP+WS сервер с file-backed очередью и pending-снапшот-запросами с таймаутом. Чистая backend-логика → TDD.
 
@@ -145,7 +145,7 @@ TDD-дисциплина: Ф2, Ф3, Ф5 — чистая логика (parser/tr
 
 ## Фаза 3 — Client collectors: resolve-component, console-tap, snapshot
 
-<!-- circle: status=pending order=30 deps=[1] autonomy=auto obstacle="" -->
+<!-- circle: status=done order=30 deps=[1] autonomy=auto obstacle="" -->
 
 **Цель фазы:** три чистых клиентских модуля сбора контекста. TDD на jsdom/happy-dom.
 
@@ -342,3 +342,55 @@ TDD-дисциплина: Ф2, Ф3, Ф5 — чистая логика (parser/tr
 ---
 
 ## Журнал
+
+### Фаза 1 — Инфра (done, 2026-06-26)
+
+Собран каркас репо: `package.json` (exports/main/types→`dist/`, peer `vite>=5`), `tsconfig.json`+`tsconfig.dts.json`, скрипты версионности (`version-sync.mjs`/`check-versions.mjs`/`release.mjs` — чистый Node, semver-бамп инлайн, без deps), husky `.husky/{pre-commit,post-commit}`, `.claude-plugin/marketplace.json`, `claude-plugin/.claude-plugin/plugin.json` (с полем `version`), README с install-инструкциями, `.gitignore` (dist НЕ игнорится).
+
+**Отклонение от плана (важно для Ф2+):** план называл **tsup** как сборщик, но tsup ОТСУТСТВУЕТ в офлайн-сторе pnpm этой машины, а сеть до npm крайне медленная/флапает. Зато `esbuild@0.27.2` + `typescript@5.9.3` (и все прочие deps) в сторе есть. Поэтому сборка сделана через **esbuild (bundle) + tsc (dts)** в `scripts/build.mjs` — контракт идентичен: `pnpm build` → `dist/{index.js (ESM, ws будет бандлиться), client.js (IIFE), index.d.ts}`. `tsup.config.ts` НЕ создавался. Для Ф2+ это прозрачно: build-команда и выход те же. Если позже понадобится фича tsup — добавить как devDep когда сеть доступна.
+
+**Установка deps:** `pnpm install --offline` падает (метадата-mirror пустой для большинства пакетов), но `pnpm install --prefer-offline` отрабатывает за ~10с (тарболлы из стора, метадата из сети — сеть после прогрева быстрая, 1–4с/пакет). Пин версий ТОЧНЫЙ (совпадает со стором). `@modelcontextprotocol/sdk` (нужен Ф5) и `tsup` в сторе ОТСУТСТВУЮТ — Ф5 потребует сетевой install sdk (сеть рабочая).
+
+**Verify (всё зелёное, исполнено реально):** `pnpm build` → три dist-файла; `import('./dist/index.js').default().name` === `vite-plugin-claude-feedback` («plugin ok»); `check-versions` exit 0; `release.mjs patch` → 0.0.2 во всех 3 манифестах → revert → 0.0.1; edge: bad-arg→exit1, divergence→exit1, `test:run`→passWithNoTests exit0. Тег `v0.0.1` создан post-commit-хуком на первом коммите. **Доп. смоук авто-версионности (контракт для всех след. фаз):** второй коммит с правкой `src/` → pre-commit реально бампнул 0.0.1→0.0.2, синкнул манифесты, пересобрал+застейджил `dist/`, post-commit поставил `v0.0.2`; дерево чистое, оба тега на месте. Первый коммит (нет HEAD-версии=рабочей) НЕ бампит — guard работает.
+
+**Откатов не было.** Репо сейчас на `v0.0.2` (стартовый `v0.0.1` тоже существует — требование шага 9 выполнено). Коммиты: `38e9c25` (scaffold) + `ca2c1c3` (named export, заодно проверил bump-path).
+
+**Следующий шаг:** Ф2 и Ф3 могут стартовать параллельно (обе deps=[1]). Build-команда `pnpm build`, выход `dist/{index.js,index.d.ts,client.js}`, авто-версионность активна (просто коммить — версия бампается сама). Внимание Ф2: bridge будет тащить `ws` (8.19.0 в сторе) — esbuild с `platform:node` бандлит ws в `dist/index.js`, node-билтины остаются external, `vite` тоже external. Внимание Ф5: `@modelcontextprotocol/sdk` НЕ в офлайн-сторе — заложи время на сетевой install.
+
+### Фаза 2 — Server: bridge + queue (done, 2026-06-26)
+
+Построено: `src/server/types.ts` (FeedbackPayload/ConsoleEntry/SnapshotRequest/BridgeInfo по спеке), `src/server/queue.ts` (`createQueue(dir,{maxItems})` — append-only JSONL + tombstone-ack `{__ack:id}`, in-memory зеркало, replay со скипом битых строк, drop-oldest cap по maxItems=1000), `src/server/bridge.ts` (`createBridge`/`createStandaloneBridge`). Bridge: один http-роутер + один `WebSocketServer({noServer})`, upgrade строго на `/__claude_feedback/ws`; `requestSnapshot` шлёт WS-`request` первому коннекту, ждёт `reply` по requestId с таймаутом (default 10000, тест на 50мс), reject `{code:'timeout'|'browser_not_connected'}`; HTTP: `POST /message` (cap→413, bad-json→400), `GET /api/feedback?ack=1`, `POST /api/request` (kind-валидация→400), `GET /api/status`; `writeBridgeInfo` атомарно (tmp+rename), при unwritable dir не крашит.
+
+**Контракт-уточнения (важно для Ф4/Ф5):**
+
+- `createStandaloneBridge(opts)` возвращает **Promise** `{bridge,server,port,close}` (порт известен только после `listen`) и САМ зовёт `writeBridgeInfo(port)` после bind — зеркалит то, что Ф4 сделает в `configureServer`.
+- WS-протокол как в плане: reply идёт **по WS** (`{type:'reply',requestId,data?,error?}`), НЕ через `POST /reply` (в спеке упоминался POST — план его переопределил, следовал плану).
+- Snapshot-failure возвращается с HTTP **200** + `{error:code}` (bridge отработал, браузер — нет); bridge-ошибки (нет файла/refused) — это уже забота bridge-client Ф5.
+- `tabs`-реестр ключуется **server-side connId**, не клиентским `tabId` (тот только в `status().tabs`). Ф4-клиент шлёт `hello{tabId,url}` как обычно.
+
+**Отклонение verify-гейта (учти для Ф5):** план звал смоук «поднять createStandaloneBridge из dist» — но в Ф2 сборка `dist/index.js` бандлит только плагин (он ещё НЕ импортит bridge, это Ф4), серверного JS в dist нет. Смоук `tests/smoke/bridge-smoke.mjs` поэтому сам бандлит `src/server/bridge.ts` через esbuild в temp-ESM и гоняет реальный round-trip (POST→ack→WS snapshot). **Грабли (must для Ф4):** esbuild ESM-вывод оборачивает `require()` из `ws` в шим, падающий на `Dynamic require of "events"`. Фикс — banner `import {createRequire as __cr} from 'module'; const require=__cr(import.meta.url);`. В смоуке он есть; **когда Ф4 заставит `scripts/build.mjs` бандлить bridge в `dist/index.js` (ESM) — тот же banner обязан попасть в build.mjs**, иначе рантайм-плагин упадёт на старте dev-сервера.
+
+**Self-review (1 проход, 2 сабагента):** применены — connId-ключ реестра (фикс ABA/eviction по дубль-tabId), loopback+Host-allowlist на `/api/*` (защита от `--host`-экспозиции и DNS-rebinding), WS `maxPayload=256K`, queue `maxItems`-cap (DoS), kind-валидация, mkdir один раз, sendJson stringify-guard, exact ws-path, ws error-log. **Отложено в Ф4/Ф5 (обоснованно):** Origin-allowlist на WS-upgrade — нужен expected-origin из Vite-конфига, есть только у Ф4 (connId-ключ уже убрал eviction-вектор; остаётся лишь «атакующий-таб отвечает на snapshot», требует выигрыша гонки first-tab); per-field shape-валидация element/component и demarcation untrusted-данных для LLM — поверхность Ф4 (контракт payload) и Ф5 (MCP). JSONL-компакция на диске — это явное design-решение плана (append-only + tombstone), не дефект.
+
+**Verify (всё зелёное, исполнено реально):** `pnpm test:run tests/unit` → 26 passed (queue 9 + bridge 17, вкл. edge: empty/boundary/concurrency/external-failure/permission/malformed-input/deleted-resource); `node tests/smoke/bridge-smoke.mjs` → `bridge-smoke ok`; `tsc -p tsconfig.json --noEmit` → exit 0; `pnpm build` → три dist-файла. **Откатов не было.** Husky на коммите `c139e33` бампнул 0.0.2→0.0.3, пересобрал dist, тег `v0.0.3`.
+
+**Следующий шаг:** Ф4 (deps[2,3]) монтирует bridge в Vite: `configureServer(server)` → `server.middlewares.use(bridge.httpMiddleware)` + `server.httpServer.on('upgrade', bridge.handleUpgrade)` + `bridge.writeBridgeInfo(actualPort)`; `buildEnd/closeBundle`→`bridge.close()`. НЕ забудь createRequire-banner в `scripts/build.mjs` (см. грабли выше). Ф5 (deps[2]) дёргает `/api/*` по localhost из bridge.json; помни про loopback+Host-гейт — MCP-клиент шлёт Host `127.0.0.1:<port>`.
+
+### Фаза 3 — Client collectors (done, 2026-06-27)
+
+Построены 4 чистых клиентских модуля (потребляет Ф4): `src/client/safe-stringify.ts` (`safeStringify(value,{maxDepth=6,maxLen=5000,maxNodes=50000})` — cycle-guard через ancestor-Set, node-budget против wide/DAG-DoS, NaN/±Inf→строки, Date/RegExp/Error→читаемо, Map с object-ключами→`[key#i]` без коллизии, `__proto__`-safe assign, DOM→`[DOM:tag]`, fn/symbol/bigint-плейсхолдеры); `src/client/resolve-component.ts` (`resolveComponent(el)` — подъём по `el.__vueParentComponent.parent` до первого с `type.__file`, имя `name||__name||basename(__file)`, guard 1000; `describeElement(el)` — tag/classes/trimmed-text/CSS-path с `:nth-of-type` и `#id`-short-circuit; экспортит `componentName(inst)` для Ф4); `src/client/console-tap.ts` (`installConsoleTap(size=200)` — tee-обёртка `console.{log,info,warn,error,debug}` + window `error`/`unhandledrejection`, кольцевой буфер, per-entry cap 8000, LIFO-dispose восстанавливает install-time оригиналы); `src/client/snapshot.ts` (`snapshotStore({store?})`/`snapshotComponent({selector?,last?},lastEl?)` — Pinia через `__VUE_DEVTOOLS_GLOBAL_HOOK__` (apps→`app.config.globalProperties.$pinia` / `_instance.appContext`), structured-error degrade `no_pinia`/`not_found`+available, querySelector в try/catch).
+
+**Контракт-уточнения (важно для Ф4):**
+
+- `resolveComponent` возвращает `ComponentDescriptor` (из `src/server/types.ts`) — `{name, file:string|null, chain:string[]}`; `null` при `el===null` ИЛИ отсутствии `__vueParentComponent` (элемент вне Vue-приложения / Shadow DOM). `file` — это сырой `type.__file` без `:line` (строки на этом слое нет; Ф4 при желании добьёт).
+- `snapshotStore` БЕЗ `store` → `{stores:[...]}` (список id); нет devtools-хука → `{error:'no_pinia'}` (НЕ `{stores:[]}` — выбрал явную причину, см. отвергнутую альтернативу ниже).
+- `snapshotComponent` читает `props` + merged `{...data, ...setupState}` (setupState выигрывает на коллизии). `last:true` без `lastEl` → `{error:'not_found'}`. Малформ-селектор / нет матча / нет инстанса → `{error:'not_found'}`.
+- `installConsoleTap` — `getBuffer()` отдаёт **копию** (slice), уровни строго `log|info|warn|error|debug` (window-error и rejection пишутся как `error`). Ф4 зовёт `getBuffer()` на «Отправить» и кладёт в `FeedbackPayload.console`.
+
+**Решение (делаю X вместо Y):** `snapshotStore` без хука отдаёт `{error:'no_pinia'}`, а не `{stores:[]}` — пустой список неотличим от «Pinia есть, стораов нет», а явная причина даёт Ф5/Claude понятный сигнал «открой превью / подключи Pinia». Тестовое окружение — per-file `// @vitest-environment happy-dom` докблок (НЕ глобальный vitest.config), чтобы серверные тесты Ф2 остались на node-дефолте — вместо добавления `environmentMatchGlobs` (deprecated в vitest 4) или раздельных конфигов.
+
+**Self-review (1 проход, 2 сабагента — code+security):** применены — node-budget `maxNodes` (security MEDIUM: wide/DAG-DoS, `[Circular]` не ловит siblings), per-entry text-cap 8000 в console-tap (MEDIUM: unbounded память/payload), NaN/Inf→строки и Date/RegExp/Error-ветки (MAJOR/MINOR: тихое искажение `→null`/`→{}`), Map object-key collision fix (MAJOR), `__proto__`-safe assign (LOW prototype-pollution, contained), ancestor-Set вместо O(n²) includes, `||`-fallback для пустого ErrorEvent.message, LIFO-dispose NOTE. **Отклонено/отложено (обосновано):** redaction секретов/PII перед уходом в LLM (security MEDIUM, `console-tap.ts`/`snapshot.ts`) — это явно поверхность Ф4 (контракт payload) / Ф5 (MCP demarcation) по решению Ф2-журнала, не слой коллекторов; Ф4 ОБЯЗАН добавить redactor (regex `*token*|*secret*|*password*|*api[_-]?key*|authorization|cookie|JWT eyJ…`) на `getBuffer()`-выход и snapshot-стейт перед `POST /message`. resolve-component параллельно clean (guard достаточен, regex линейны, querySelector без инъекции/ReDoS).
+
+**Verify (всё зелёное, исполнено реально на happy-dom):** `npx vitest run tests/unit/{safe-stringify,resolve-component,console-tap,snapshot}.test.ts` → 36 passed (8+10+7+11, edge: empty/boundary/concurrency/external-failure/permission-N-A/malformed-input/deleted-resource + browser-Shadow-DOM-null); `pnpm test:run tests/unit` → 69 passed (без регресса Ф2); `tsc -p tsconfig.json --noEmit` → exit 0; `pnpm build` → три dist-файла. **Откатов не было.** Husky на коммите `6bc385e` бампнул 0.0.3→0.0.4, пересобрал dist, тег `v0.0.4`, дерево чистое.
+
+**Следующий шаг:** Ф4 импортит `resolveComponent`/`describeElement`/`installConsoleTap` для сборки `FeedbackPayload` и `snapshotStore`/`snapshotComponent` для ответа на WS-`request`. Коллекторы НЕ импортятся из `dist/` (это client-TS, бандлится в `dist/client.js` только когда `src/client/index.ts` их подтянет в Ф4) — Ф4 импортит их по relative-path из `src/client/`. **Must для Ф4 (из security-review):** redactor секретов на console-буфер и snapshot-выход перед отправкой в очередь.
