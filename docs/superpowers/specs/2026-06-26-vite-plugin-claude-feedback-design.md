@@ -45,43 +45,74 @@ Options: `{ port?: number, hotkey?: string, consoleBufferSize?: number, queueDir
 
 Installed into Claude Code (and distributable through the conveyor plugin system). Contains:
 
-- `.claude-plugin/plugin.json` — manifest declaring a **stdio** MCP server (`mcp-server.mjs`).
+- `.claude-plugin/plugin.json` — manifest declaring a **stdio** MCP server (`mcp-server.mjs`), a **SessionStart** hook, the skill, and the commands.
 - `mcp-server.mjs` — a thin stdio MCP server that reads `.claude-feedback/bridge.json`, connects to the bridge over localhost HTTP, and exposes tools to Claude. It owns no state itself.
+- `hooks/session-start.sh` — SessionStart hook: idempotently auto-wire the Vite plugin into the project (see Lifecycle).
+- `scripts/wire.mjs` / `scripts/unwire.mjs` — the actual setup/remove logic, shared by the hook and the commands.
 - `skills/claude-feedback/SKILL.md` — tells Claude when/how to pull feedback and act on it.
 - `commands/feedback.md` — `/feedback` slash command: fetch and summarize pending feedback, then start working on it.
-- `commands/feedback-setup.md` — `/feedback:setup` slash command: wire the Vite plugin into the current project (see Installation).
+- `commands/feedback-setup.md` — `/feedback:setup` slash command: manually run the wire-in (same as the auto hook).
+- `commands/feedback-remove.md` — `/feedback:remove` slash command: un-wire the Vite plugin from the project (manual — there is no auto-remove; see Lifecycle).
 
 **Why stdio MCP in the CC plugin (not HTTP MCP in the Vite process):** stdio is the most robust transport for a bundled CC plugin — Claude owns the MCP process lifecycle, and there is no HTTP-URL/port coupling in the MCP registration. The dynamic bridge port is discovered via the `bridge.json` file instead.
 
 ## Installation (how a user enables this in a project)
 
-Two artifacts, reduced to **one enable + one command**. No npm-registry publishing — the Vite plugin installs directly from GitHub.
+Repo: **`https://github.com/SI-IC/vue-pick-problem-skill`** (public). Two artifacts, reduced to **one enable** — the Vite side then wires itself in automatically. No npm-registry publishing — the Vite plugin installs directly from GitHub.
 
-### Step 1 — enable the Claude Code plugin `claude-feedback`
+### Step 1 — add the marketplace & enable the plugin
 
-Standard conveyor flow: add `claude-feedback` to the plugin library (`/plugins`) → it becomes a per-project override → on container start `PluginInstallService.ensureProjectPlugins` installs it into the project's Claude. The stdio MCP server, the `claude-feedback` skill, and the `/feedback` + `/feedback:setup` commands are then available. No manual steps beyond the normal plugin toggle.
+Claude Code marketplace lives at the repo root (`.claude-plugin/marketplace.json`).
 
-### Step 2 — run `/feedback:setup` in the chat
+```
+/plugin marketplace add SI-IC/vue-pick-problem-skill
+/plugin install claude-feedback@vue-pick-problem-skill
+```
 
-The command (idempotent, Claude executes it) does:
+Inside conveyor this is the standard plugin-library flow: add `claude-feedback` to the library (`/plugins`) → per-project override → on container start `PluginInstallService.ensureProjectPlugins` installs it. The stdio MCP server, the `claude-feedback` skill, the SessionStart hook, and the `/feedback*` commands become available.
 
-1. Detect the project: read `package.json` + `vite.config.{ts,js,mjs}`; confirm `vue` + `vite` are present. Abort with a clear message otherwise.
-2. Install the Vite plugin from GitHub (no npm registry):
+### Step 2 — automatic wire-in (no manual command needed)
+
+On the **next session start** the plugin's SessionStart hook runs `scripts/wire.mjs`, which idempotently:
+
+1. Detects the project: reads `package.json` + `vite.config.{ts,js,mjs}`; confirms `vue` + `vite` are present. No-op with a logged note otherwise.
+2. **If not already wired:** installs the Vite plugin from GitHub (no npm registry), resolving the **latest tag dynamically** so the command never needs hand-editing:
    ```bash
-   pnpm add -D github:<owner>/vue-pick-problem-skill#<tag>
+   pnpm add -D "github:SI-IC/vue-pick-problem-skill#$(git ls-remote --tags --refs https://github.com/SI-IC/vue-pick-problem-skill | tail -1 | sed 's:.*/::')"
    ```
    (falls back to `npm i -D` / `yarn add -D` based on the project's lockfile).
-3. Patch `vite.config` idempotently: add `import claudeFeedback from 'vite-plugin-claude-feedback'` and insert `claudeFeedback()` into the `plugins: []` array. If already present, do nothing.
-4. Instruct the user to restart the dev server.
+3. Patches `vite.config` idempotently: adds `import claudeFeedback from 'vite-plugin-claude-feedback'` and inserts `claudeFeedback()` into `plugins: []`. If already present, does nothing.
+4. **If already wired:** fast no-op (a `vite.config` grep + `node_modules` check), no network, no pnpm.
 
-Result for the user: **enable `claude-feedback` in the library → say `/feedback:setup` → press Alt+C in the preview.**
+`/feedback:setup` runs the exact same `wire.mjs` on demand (for re-runs or when the hook was skipped). The one-time install cost (network + pnpm) happens only on the first session after enable; every later session start is a cheap no-op.
+
+Result for the user: **enable `claude-feedback` → (next session auto-wires) → press Alt+C in the preview.**
 
 ### GitHub-install constraints (design consequences)
 
 - **Prebuilt `dist/` is committed to the repo.** `package.json` `exports`/`main` point at `dist/`, so a `github:` install needs no build toolchain in the container (fast, deterministic). A `prepare` build step is intentionally **not** used.
-- The repo root **is** the npm package (`vite-plugin-claude-feedback`); the CC plugin lives in `claude-plugin/` and is shipped via the marketplace, not the git-install. `github:<owner>/<repo>` therefore resolves the root `package.json` correctly.
-- Installs are pinned to a **tag** (`#v0.1.0`) for reproducibility; `/feedback:setup` carries the current tag.
-- **Repo visibility:** a **public** repo installs with no auth. A private repo requires git credentials (token/SSH) present in the container — recommend public unless the repo holds secrets.
+- The repo root **is** the npm package (`vite-plugin-claude-feedback`); the CC plugin lives in `claude-plugin/` and is shipped via the marketplace, not the git-install. `github:SI-IC/vue-pick-problem-skill` therefore resolves the root `package.json` correctly.
+- Installs pin to the **latest tag** resolved at wire time (versioning below keeps a tag current per change).
+- Repo is **public** → install needs no auth.
+
+## Lifecycle (auto-setup on enable, manual remove)
+
+Claude Code has **no install/enable/disable/uninstall plugin hooks**, and a disabled plugin executes no code. Therefore:
+
+- **Auto-setup on enable → via the SessionStart hook** (above). Effectively "on enable", since the first session after enabling triggers `wire.mjs`. Idempotent and self-healing across sessions.
+- **No auto-remove on disable.** A disabled plugin cannot run anything, and there is no uninstall hook — so removal can only be **manual** via `/feedback:remove` (runs `unwire.mjs`: strips the import + `claudeFeedback()` from `vite.config` and uninstalls the dep). Driving removal from conveyor's `PluginInstallService` was explicitly declined and is out of scope.
+
+## Versioning (automatic, both artifacts)
+
+Single source of truth: the **root `package.json` `version`**. Both artifacts and the marketplace stay in sync automatically as Claude Code changes the repo.
+
+- **Husky `pre-commit`** — when files under `src/` or `claude-plugin/` are staged: bump **patch** (default), sync the new version into `claude-plugin/.claude-plugin/plugin.json` and the `claude-feedback` entry in `.claude-plugin/marketplace.json`, rebuild `dist/`, and stage all of them.
+- **Husky `post-commit`** — create the matching git tag `v<version>`.
+- **Push** with `git push --follow-tags` so the tag reaches GitHub (what `wire.mjs` resolves as latest).
+- **Minor/major** bumps are explicit: Claude runs `pnpm release minor|major` (the skill instructs it to do so for features / breaking changes); default automatic bump is patch.
+- A sync check (`scripts/check-versions.mjs`) fails the commit if the three version fields ever diverge, so they cannot drift.
+
+Net effect: every change Claude Code commits to the plugin produces a fresh, installable tag with both artifacts' versions in lockstep.
 
 ## Architecture
 
@@ -227,22 +258,38 @@ At client init (before app code where possible), wrap `console.{log,info,warn,er
 
 ```
 vue-pick-problem-skill/
+  README.md                          # CC-plugin install instructions (marketplace add/install, usage)
   package.json                       # vite-plugin-claude-feedback (peer: vite >=5)
   dist/                              # prebuilt, committed (so github: install needs no build)
+  .claude-plugin/marketplace.json    # Claude Code marketplace manifest (repo root)
+  .husky/{pre-commit,post-commit}    # auto-versioning
+  scripts/{release.mjs,check-versions.mjs}
   src/plugin/index.ts
   src/server/{bridge.ts,queue.ts}
   src/client/{index.ts,overlay.ts,resolve-component.ts,console-tap.ts,snapshot.ts}
   claude-plugin/
-    .claude-plugin/plugin.json
+    .claude-plugin/plugin.json       # mcpServers (stdio) + SessionStart hook + skill/commands
     mcp-server.mjs
+    hooks/session-start.sh
+    scripts/{wire.mjs,unwire.mjs}
     skills/claude-feedback/SKILL.md
     commands/feedback.md             # /feedback — pull & act on feedback
-    commands/feedback-setup.md       # /feedback:setup — wire Vite plugin into project
+    commands/feedback-setup.md       # /feedback:setup — manual wire-in
+    commands/feedback-remove.md      # /feedback:remove — manual un-wire
   examples/demo-app/                  # Vue 3 + Vite + Pinia for e2e
   tests/{unit,e2e}/
 ```
 
 `dist/` is a committed build artifact (not in `.gitignore`) because the GitHub install path depends on it.
+
+### README / install instructions (req: repo ships its own install docs)
+
+`README.md` documents, for end users:
+
+- **Marketplace install:** `/plugin marketplace add SI-IC/vue-pick-problem-skill` then `/plugin install claude-feedback@vue-pick-problem-skill`.
+- **Conveyor install:** add `claude-feedback` via the plugin library (`/plugins`).
+- What happens automatically (SessionStart auto-wire), and the manual `/feedback:setup` / `/feedback:remove` fallbacks.
+- Usage: Alt+C in the dev preview, element picker, what context is sent, and the MCP tools Claude can call.
 
 ## Dependency Versions (pin latest at implementation, verified 2026-06-26)
 
@@ -250,8 +297,28 @@ vue-pick-problem-skill/
 - `ws` 8.21.0 (bridge WebSocket)
 - peer `vite` `>=5` (conveyor uses 7; latest is 8.1.0)
 - `@vitejs/plugin-vue` 6.0.7 (demo app)
+- `husky` (auto-versioning hooks)
 
 Re-run registry lookups at build time and pin the then-current latest.
+
+## Marketplace manifest (req: repo includes the marketplace)
+
+`.claude-plugin/marketplace.json` at repo root, the plugin sourced from the in-repo subdir:
+
+```json
+{
+  "name": "vue-pick-problem-skill",
+  "owner": { "name": "SI-IC" },
+  "description": "Send element-anchored feedback from a Vue+Vite dev preview to Claude Code",
+  "plugins": [
+    {
+      "name": "claude-feedback",
+      "source": "./claude-plugin",
+      "description": "Alt+C in the dev preview to send Claude the page URL, picked element, its Vue component, and console — pull-based via MCP."
+    }
+  ]
+}
+```
 
 ## Open Naming
 
