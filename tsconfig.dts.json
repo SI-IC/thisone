@@ -4,7 +4,7 @@
     "noEmit": false,
     "declaration": true,
     "emitDeclarationOnly": true,
-    "rootDir": "src/plugin",
+    "rootDir": "src",
     "outDir": "dist"
   },
   "include": ["src/plugin/index.ts"]

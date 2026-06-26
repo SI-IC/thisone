@@ -1,14 +1,11 @@
 import type { Plugin } from "vite";
 export interface ClaudeFeedbackOptions {
-    /** Hotkey code that opens the overlay (default 'KeyC' with Alt). */
+    /** Hotkey code that opens the overlay together with Alt (default 'KeyC'). */
     hotkey?: string;
-    /** Size of the rolling console buffer captured in the browser. */
+    /** Size of the rolling console buffer captured in the browser (default 200). */
     consoleBufferSize?: number;
+    /** Snapshot request timeout in ms (default 10000). */
+    requestTimeoutMs?: number;
 }
-/**
- * Vite plugin that injects the Claude feedback overlay into dev pages and mounts
- * the in-process bridge (HTTP + WebSocket). Phase 1 ships a stub so the build
- * pipeline is exercised end-to-end; the real implementation lands in Phase 4.
- */
-export declare function claudeFeedback(_options?: ClaudeFeedbackOptions): Plugin;
+export declare function claudeFeedback(options?: ClaudeFeedbackOptions): Plugin;
 export default claudeFeedback;

@@ -11,7 +11,7 @@
 
 import { build } from "esbuild";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -33,6 +33,13 @@ await build({
   sourcemap: false,
   // vite is a peer dependency — never bundle it.
   external: ["vite"],
+  // The plugin now bundles the bridge, which bundles `ws`. ws require()s node
+  // builtins; esbuild's ESM output routes those through a __require shim that
+  // throws ("Dynamic require of events") unless a real `require` exists. Define
+  // one via createRequire so the shim picks it up (Phase 2 journal grabli).
+  banner: {
+    js: "import { createRequire as __cr } from 'module'; const require = __cr(import.meta.url);",
+  },
 });
 
 // (b) Client overlay — single IIFE bundle inlined into dev pages.
@@ -46,7 +53,11 @@ await build({
   sourcemap: false,
 });
 
-// (c) Type declarations -> dist/index.d.ts
+// (c) Type declarations. The plugin now imports from ../server, so the dts
+// program spans src/{plugin,server}; rootDir is "src" and tsc mirrors the tree
+// under dist/. Relocate the one file we ship (dist/plugin/index.d.ts) to
+// dist/index.d.ts and drop the rest — the public type surface references no
+// server types, so the relocated declaration stays self-contained.
 execFileSync(
   process.execPath,
   [
@@ -56,5 +67,14 @@ execFileSync(
   ],
   { stdio: "inherit", cwd: root },
 );
+
+const emitted = resolve(dist, "plugin/index.d.ts");
+if (!existsSync(emitted)) {
+  throw new Error("dts emit missing expected dist/plugin/index.d.ts");
+}
+renameSync(emitted, resolve(dist, "index.d.ts"));
+for (const dir of ["plugin", "server", "client"]) {
+  rmSync(resolve(dist, dir), { recursive: true, force: true });
+}
 
 console.log("build ok: dist/{index.js,client.js,index.d.ts}");
