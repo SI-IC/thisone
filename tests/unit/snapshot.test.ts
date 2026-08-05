@@ -36,8 +36,20 @@ describe("snapshotStore", () => {
     });
   });
 
-  it("returns no_pinia when the devtools hook is absent (external-failure)", () => {
+  it("returns no_pinia when neither the devtools hook nor a mounted app is present (external-failure)", () => {
     expect(snapshotStore({ store: "x" })).toEqual({ error: "no_pinia" });
+  });
+
+  it("falls back to __vue_app__ on the mounted root when devtools is not installed", () => {
+    document.body.innerHTML = `<div id="app"></div>`;
+    const pinia = { _s: new Map([["counter", { $state: { count: 7 } }]]) };
+    (document.getElementById("app") as any).__vue_app__ = {
+      config: { globalProperties: { $pinia: pinia } },
+    };
+    expect(snapshotStore({ store: "counter" })).toEqual({
+      store: "counter",
+      state: { count: 7 },
+    });
   });
 
   it("does not throw on a cyclic store state (malformed-input)", () => {

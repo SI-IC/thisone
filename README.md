@@ -53,6 +53,7 @@ pnpm install
 pnpm build        # -> dist/{index.js, client.js, index.d.ts}
 pnpm test:run     # unit tests
 pnpm check:versions
+bash scripts/e2e.sh   # full e2e against examples/demo-app (see tests/e2e/README.md)
 ```
 
 Versioning is automatic: a husky `pre-commit` hook bumps the patch version, syncs it across the package, the CC-plugin manifest, and the marketplace entry, rebuilds `dist/`, and stages it; a `post-commit` hook tags `v<version>`. For a larger bump run `pnpm release minor` (or `major`) before committing. The built `dist/` is committed on purpose so a GitHub install needs no build toolchain.

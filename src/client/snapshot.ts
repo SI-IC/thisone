@@ -16,8 +16,9 @@ export type ComponentSnapshot =
   | { name: string; props: any; state: any }
   | { error: "not_found" };
 
-/** Locate the active Pinia instance via the Vue devtools global hook. */
-function findPinia(): any | null {
+const DOM_SCAN_BUDGET = 20000;
+
+function findPiniaViaHook(): any | null {
   if (typeof window === "undefined") return null;
   const hook = (window as any).__VUE_DEVTOOLS_GLOBAL_HOOK__;
   if (!hook) return null;
@@ -41,6 +42,22 @@ function findPinia(): any | null {
   if (gp2?.$pinia) return gp2.$pinia;
 
   return null;
+}
+
+function findPiniaViaMountedRoot(): any | null {
+  if (typeof document === "undefined") return null;
+  const nodes = document.querySelectorAll("*");
+  const limit = Math.min(nodes.length, DOM_SCAN_BUDGET);
+  for (let i = 0; i < limit; i++) {
+    const app = (nodes[i] as any).__vue_app__;
+    const gp = app?.config?.globalProperties;
+    if (gp?.$pinia) return gp.$pinia;
+  }
+  return null;
+}
+
+function findPinia(): any | null {
+  return findPiniaViaHook() ?? findPiniaViaMountedRoot();
 }
 
 function storeMap(pinia: any): Map<string, any> {

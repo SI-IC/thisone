@@ -217,7 +217,8 @@
   }
 
   // src/client/snapshot.ts
-  function findPinia() {
+  var DOM_SCAN_BUDGET = 2e4;
+  function findPiniaViaHook() {
     var _a, _b, _c, _d, _e, _f, _g, _h;
     if (typeof window === "undefined") return null;
     const hook = window.__VUE_DEVTOOLS_GLOBAL_HOOK__;
@@ -234,6 +235,22 @@
     const gp2 = (_h = (_g = inst == null ? void 0 : inst.appContext) == null ? void 0 : _g.config) == null ? void 0 : _h.globalProperties;
     if (gp2 == null ? void 0 : gp2.$pinia) return gp2.$pinia;
     return null;
+  }
+  function findPiniaViaMountedRoot() {
+    var _a;
+    if (typeof document === "undefined") return null;
+    const nodes = document.querySelectorAll("*");
+    const limit = Math.min(nodes.length, DOM_SCAN_BUDGET);
+    for (let i = 0; i < limit; i++) {
+      const app = nodes[i].__vue_app__;
+      const gp = (_a = app == null ? void 0 : app.config) == null ? void 0 : _a.globalProperties;
+      if (gp == null ? void 0 : gp.$pinia) return gp.$pinia;
+    }
+    return null;
+  }
+  function findPinia() {
+    var _a;
+    return (_a = findPiniaViaHook()) != null ? _a : findPiniaViaMountedRoot();
   }
   function storeMap(pinia) {
     const s = pinia == null ? void 0 : pinia._s;

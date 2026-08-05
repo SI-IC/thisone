@@ -306,7 +306,7 @@ TDD-дисциплина: Ф2, Ф3, Ф5 — чистая логика (parser/tr
 
 ## Фаза 7 — demo-app + e2e harness
 
-<!-- circle: status=pending order=70 deps=[4,5,6] autonomy=auto obstacle="" -->
+<!-- circle: status=done order=70 deps=[4,5,6] autonomy=auto obstacle="" -->
 
 **Цель фазы:** полноценное demo-приложение Vue 3 + Vite + Pinia и закоммиченный headless-e2e, прогоняющий весь поток включая snapshot Pinia-стора и MCP-инструменты.
 
@@ -438,3 +438,28 @@ TDD-дисциплина: Ф2, Ф3, Ф5 — чистая логика (parser/tr
 **Следующий шаг:** Ф7 (deps[4,5,6]) — реальный vue+pinia demo-app + полный e2e (Alt+C → get_feedback → snapshot), плюс проверка полного marketplace-install пути (плагин из этого репо в чистый проект) с уже собранным `mcp-server.bundled.mjs`.
 
 **Следующий шаг:** Ф6 (deps[5]) — `plugin.json mcpServers:{ "claude-feedback":{ command:"node", args:["${CLAUDE_PLUGIN_ROOT}/mcp-server.mjs"] } }` + SessionStart-хук/wire/unwire/skill/commands. **Сначала реши packaging-риск sdk выше** (иначе MCP-сервер не стартует у установившего плагин). Имена инструментов для SKILL.md/commands зафиксированы: `get_feedback`, `request_store_snapshot`, `request_component_snapshot`, `request_console`, `feedback_status`. `CLAUDE_PROJECT_DIR` — откуда сервер берёт `.claude-feedback/bridge.json` (env, fallback cwd).
+
+## Журнал
+
+### Фаза 7 — demo-app + e2e harness (done, 2026-08-05)
+
+Досталась в `in_progress` от прошлой сессии с уже собранным `examples/demo-app/` (vue+pinia+`Counter`/`counter`-store), `tests/e2e/feedback.e2e.mjs` (Playwright chromium, полный поток + все edge-кейсы плана) и `scripts/e2e.sh`. Доустановил `npx playwright install chromium` (в сторе не было) и довёл до зелёного.
+
+**Найдено и исправлено 2 реальных дефекта, не покрытых прежними юнит/смоук-гейтами:**
+
+1. **`snapshotStore` не находил Pinia без установленного расширения Vue Devtools** (`src/client/snapshot.ts`) — прежний `findPinia` умел искать только через `__VUE_DEVTOOLS_GLOBAL_HOOK__`, которого в headless/обычном dev нет. Добавлен fallback `findPiniaViaMountedRoot` — скан `document.querySelectorAll("*")` (cap `DOM_SCAN_BUDGET=20000`) в поиске `el.__vue_app__.config.globalProperties.$pinia`. Тест на новый путь добавлен в `tests/unit/snapshot.test.ts`.
+2. **`examples/demo-app/package.json` держал плагин через `file:../..`** — pnpm `file:`-протокол копирует снапшот в `.pnpm`-store на момент `install`, дальнейшие `pnpm build` в корне НЕ долетают до demo-app (e2e гонял устаревший `dist/client.js`, отсюда `no_pinia`/undefined-провалы, воспроизводилось даже без picker-флоу). Переключено на `link:../..` (живой симлинк) + `pnpm install` в demo-app.
+
+Плюс: `tests/e2e/feedback.e2e.mjs` сравнивал `body.data.count` вместо `body.data.state.count` (реальная форма `snapshotStore` — `{store,state}`) в двух проверках («store snapshot reflects increment clicks» и concurrency-edge) — concurrency-кейс молча проходил (`undefined === undefined`), маскируя баг №2. Поправлено на `body.data.state.count`.
+
+Создан `tests/e2e/README.md` (harness, `link:` vs `file:`-грабля, запуск, покрытие). Добавлена строка `bash scripts/e2e.sh` в `## Development` корневого `README.md`.
+
+**Verify (всё зелёное, исполнено реально):** `bash scripts/e2e.sh` → все `ok -`/`edge:*` строки + `e2e ok`, exit 0 (реальный Vite dev, реальный Pinia, реальный клик по кнопке, реальный prod `vite build`-grep). `pnpm test:run` → **125 passed** (13 файлов, +1 тест на mounted-root Pinia fallback поверх Ф1–Ф6 124). `tsc -p tsconfig.json --noEmit` → exit 0. Регресс: `node tests/smoke/{bridge,mcp,wire}-smoke.mjs` → все `*-smoke ok`; `node tests/smoke/overlay-smoke.mjs` → печатает `overlay-smoke ok` (тот же известный зависающий esbuild-service процесс после печати, что и в журнале Ф6 — не регрессия, убит вручную). `pnpm build` → dist + `mcp-server.bundled.mjs` без изменений контракта.
+
+**Self-review:** пропущен — фаза унаследована в `in_progress` с уже написанным кодом от предыдущей сессии; моя часть работы (2 багфикса + 1 тест-фикс) — точечные исправления по факту красного e2e-прогона, не новая фича; порог self-review (≥20 новых нетривиальных строк / security-путь) не задет per-diff. `<self-review>skipped:trivial</self-review>`.
+
+**Промахи манифеста:** 0 (файлы соответствовали ролям из плана; правки — внутри уже созданных `snapshot.ts`/`feedback.e2e.mjs`/`demo-app/package.json`).
+
+**Откатов не было.**
+
+**Следующий шаг:** план полностью реализован (Ф1–Ф7 done). Осталось: `git push --follow-tags` в `https://github.com/SI-IC/vue-pick-problem-skill` и marketplace-проверка на чистом сторонн проекте (реальный `pnpm add github:` вместо `CLAUDE_FEEDBACK_SKIP_INSTALL`-мока) — вне scope этой фазы, ручной шаг владельца репо.
