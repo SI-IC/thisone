@@ -11,7 +11,13 @@
 
 import { build } from "esbuild";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+} from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -77,4 +83,28 @@ for (const dir of ["plugin", "server", "client"]) {
   rmSync(resolve(dist, dir), { recursive: true, force: true });
 }
 
-console.log("build ok: dist/{index.js,client.js,index.d.ts}");
+await build({
+  entryPoints: [resolve(root, "claude-plugin/mcp-server.mjs")],
+  outfile: resolve(root, "claude-plugin/mcp-server.bundled.mjs"),
+  bundle: true,
+  format: "esm",
+  platform: "node",
+  target: "node18",
+  sourcemap: false,
+  banner: {
+    js: "import { createRequire as __cr } from 'module'; const require = __cr(import.meta.url);",
+  },
+});
+if (
+  readFileSync(resolve(root, "claude-plugin/mcp-server.bundled.mjs"), "utf8")
+    .split("\n")
+    .some((l) => /^import .*["']@modelcontextprotocol\/sdk/.test(l))
+) {
+  throw new Error(
+    "mcp-server.bundled.mjs still imports @modelcontextprotocol/sdk as a bare specifier — bundling failed",
+  );
+}
+
+console.log(
+  "build ok: dist/{index.js,client.js,index.d.ts}, claude-plugin/mcp-server.bundled.mjs",
+);
