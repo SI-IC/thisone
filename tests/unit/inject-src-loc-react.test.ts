@@ -61,3 +61,81 @@ describe("injectSourceLocations (React)", () => {
     );
   });
 });
+
+describe("injectSourceLocations (React) — component statics", () => {
+  it("attaches __file/__name to a function declaration component", () => {
+    const src = `function Foo() {\n  return <div>hi</div>;\n}\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+    expect(out).toContain('Foo.__name = "Foo";');
+  });
+
+  it("attaches __file/__name to a default-exported function component", () => {
+    const src = `export default function App() {\n  return <h1>hi</h1>;\n}\n`;
+    const out = injectSourceLocations(src, "/proj/App.tsx");
+    expect(out).toContain('App.__file = "/proj/App.tsx";');
+    expect(out).toContain('App.__name = "App";');
+  });
+
+  it("attaches __file/__name to a named-exported function component", () => {
+    const src = `export function Foo() {\n  return <div>hi</div>;\n}\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+  });
+
+  it("attaches __file/__name to a class component", () => {
+    const src =
+      `class Foo extends Component {\n` +
+      `  render() {\n` +
+      `    return <div>hi</div>;\n` +
+      `  }\n` +
+      `}\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+    expect(out).toContain('Foo.__name = "Foo";');
+  });
+
+  it("attaches statics to the outer binding of a memo()-wrapped component", () => {
+    const src = `const Foo = memo(function Inner() {\n  return <div>hi</div>;\n});\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+    expect(out).not.toContain("Inner.__file");
+  });
+
+  it("attaches statics to the outer binding of a nested memo(forwardRef(...)) component", () => {
+    const src =
+      `const Foo = memo(forwardRef((props, ref) => {\n` +
+      `  return <div>hi</div>;\n` +
+      `}));\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+  });
+
+  it("recognizes React.memo / React.forwardRef qualified callees", () => {
+    const src = `const Foo = React.memo(function Inner() {\n  return <div>hi</div>;\n});\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+  });
+
+  it("attaches statics to a named export const memo() component", () => {
+    const src = `export const Foo = memo(function Inner() {\n  return <div>hi</div>;\n});\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+  });
+
+  it("does not attach statics to a PascalCase constant that isn't a memo/forwardRef call (false-positive avoidance)", () => {
+    const src =
+      `const Colors = Object.freeze({ a: 1 });\n` +
+      `function lower() {\n` +
+      `  return <div>hi</div>;\n` +
+      `}\n`;
+    const out = injectSourceLocations(src, "/proj/x.tsx");
+    expect(out).not.toContain("Colors.__file");
+  });
+
+  it("does not attach statics to a lowercase-named function even though it renders JSX", () => {
+    const src = `function lower() {\n  return <div>hi</div>;\n}\n`;
+    const out = injectSourceLocations(src, "/proj/x.tsx");
+    expect(out).not.toContain("lower.__file");
+  });
+});
