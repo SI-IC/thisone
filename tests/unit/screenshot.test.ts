@@ -43,12 +43,12 @@ describe("paddedCropRect", () => {
   });
 
   it("clamps padding at the bottom-right bounds edge (boundary)", () => {
-    const r = paddedCropRect(rect(930, 930, 970, 970), PADDING_PX, {
+    const r = paddedCropRect(rect(900, 900, 990, 990), PADDING_PX, {
       width: 1000,
       height: 1000,
     });
-    expect(r.width).toBe(100);
-    expect(r.height).toBe(100);
+    expect(r.width).toBe(130);
+    expect(r.height).toBe(130);
   });
 
   it("returns a zero-size rect when the element itself is empty (empty)", () => {
