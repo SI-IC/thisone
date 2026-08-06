@@ -139,3 +139,73 @@ describe("injectSourceLocations (React) — component statics", () => {
     expect(out).not.toContain("lower.__file");
   });
 });
+
+describe("injectSourceLocations (React) — bare arrow/function-expression components", () => {
+  it("attaches statics to a bare arrow-function component with a concise JSX body", () => {
+    const src = `const Foo = () => <div>hi</div>;\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+    expect(out).toContain('Foo.__name = "Foo";');
+  });
+
+  it("attaches statics to a bare arrow-function component with a block body", () => {
+    const src = `const Foo = () => {\n  return <div>hi</div>;\n};\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+  });
+
+  it("attaches statics to a bare function-expression component", () => {
+    const src = `const Foo = function () {\n  return <div>hi</div>;\n};\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+  });
+
+  it("does not attach statics to a bare arrow function that returns non-JSX", () => {
+    const src = `const Foo = () => 42;\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).not.toContain("Foo.__file");
+  });
+
+  it("does not attach statics to a PascalCase const built from a plain Array.map call", () => {
+    const src =
+      `const items = ["a", "b"];\n` +
+      `const List = items.map((x) => <li key={x}>{x}</li>);\n`;
+    const out = injectSourceLocations(src, "/proj/x.tsx");
+    expect(out).not.toContain("List.__file");
+  });
+});
+
+describe("injectSourceLocations (React) — third-party / aliased HOCs", () => {
+  it("attaches statics to a component wrapped by an unrecognized curried HOC (connect(mapState)(Bar))", () => {
+    const src =
+      `function Bar() {\n  return <div>hi</div>;\n}\n` +
+      `const Foo = connect(mapState)(Bar);\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+  });
+
+  it("attaches statics to a component wrapped by a simple third-party HOC (withRouter(Bar))", () => {
+    const src =
+      `function Bar() {\n  return <div>hi</div>;\n}\n` +
+      `const Foo = withRouter(Bar);\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+  });
+
+  it("recognizes an aliased react import (import { memo as m } from 'react')", () => {
+    const src =
+      `import { memo as m } from "react";\n` +
+      `const Foo = m(function Inner() {\n  return <div>hi</div>;\n});\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+    expect(out).not.toContain("Inner.__file");
+  });
+
+  it("recognizes a namespace react import (import * as React from 'react'; React.memo(...))", () => {
+    const src =
+      `import * as ReactNS from "react";\n` +
+      `const Foo = ReactNS.memo(function Inner() {\n  return <div>hi</div>;\n});\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+  });
+});

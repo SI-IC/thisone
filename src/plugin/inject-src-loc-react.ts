@@ -12,16 +12,77 @@ function isPascalCase(name: string): boolean {
   return /^[A-Z]/.test(name);
 }
 
-function isHocCallee(node: t.Node): boolean {
-  if (t.isIdentifier(node)) return HOC_NAMES.has(node.name);
+interface ReactAliases {
+  hocLocalNames: Map<string, string>;
+  namespaceLocalNames: Set<string>;
+}
+
+function collectReactAliases(programNode: t.Program): ReactAliases {
+  const hocLocalNames = new Map<string, string>();
+  const namespaceLocalNames = new Set<string>();
+  for (const stmt of programNode.body) {
+    if (!t.isImportDeclaration(stmt) || stmt.source.value !== "react") {
+      continue;
+    }
+    for (const spec of stmt.specifiers) {
+      if (t.isImportSpecifier(spec)) {
+        const imported = t.isIdentifier(spec.imported)
+          ? spec.imported.name
+          : spec.imported.value;
+        if (HOC_NAMES.has(imported)) {
+          hocLocalNames.set(spec.local.name, imported);
+        }
+      } else if (t.isImportNamespaceSpecifier(spec)) {
+        namespaceLocalNames.add(spec.local.name);
+      }
+    }
+  }
+  return { hocLocalNames, namespaceLocalNames };
+}
+
+function isHocCallee(node: t.Node, aliases: ReactAliases): boolean {
+  if (t.isIdentifier(node)) {
+    return HOC_NAMES.has(node.name) || aliases.hocLocalNames.has(node.name);
+  }
   if (
     t.isMemberExpression(node) &&
-    t.isIdentifier(node.object, { name: "React" }) &&
-    t.isIdentifier(node.property)
+    t.isIdentifier(node.object) &&
+    t.isIdentifier(node.property) &&
+    (node.object.name === "React" ||
+      aliases.namespaceLocalNames.has(node.object.name))
   ) {
     return HOC_NAMES.has(node.property.name);
   }
   return false;
+}
+
+function containsJSX(path: import("@babel/traverse").NodePath): boolean {
+  let found = false;
+  path.traverse({
+    "JSXElement|JSXFragment"(p: import("@babel/traverse").NodePath) {
+      found = true;
+      p.stop();
+    },
+  });
+  return found;
+}
+
+function isGenericHocCallWrappingComponent(
+  callPath: import("@babel/traverse").NodePath<t.CallExpression>,
+): boolean {
+  const callee = callPath.node.callee;
+  if (!t.isIdentifier(callee) && !t.isCallExpression(callee)) return false;
+  return callPath.get("arguments").some((argPath) => {
+    const arg = argPath.node;
+    if (t.isIdentifier(arg) && isPascalCase(arg.name)) return true;
+    if (
+      (t.isArrowFunctionExpression(arg) || t.isFunctionExpression(arg)) &&
+      containsJSX(argPath as import("@babel/traverse").NodePath)
+    ) {
+      return true;
+    }
+    return false;
+  });
 }
 
 function staticsFor(name: string, relFile: string): t.ExpressionStatement[] {
@@ -76,32 +137,47 @@ export function injectSourceLocations(source: string, relFile: string): string {
       },
 
       Program(programPath) {
+        const aliases = collectReactAliases(programPath.node);
         const inserts: t.ExpressionStatement[] = [];
-        for (const stmt of programPath.node.body) {
-          const decl =
-            t.isExportNamedDeclaration(stmt) ||
-            t.isExportDefaultDeclaration(stmt)
-              ? stmt.declaration
-              : stmt;
-          if (!decl) continue;
+        for (const stmtPath of programPath.get("body")) {
+          const declPath =
+            stmtPath.isExportNamedDeclaration() ||
+            stmtPath.isExportDefaultDeclaration()
+              ? stmtPath.get("declaration")
+              : stmtPath;
+          if (Array.isArray(declPath) || !declPath.node) continue;
 
           if (
-            t.isFunctionDeclaration(decl) &&
-            decl.id &&
-            isPascalCase(decl.id.name)
+            declPath.isFunctionDeclaration() &&
+            declPath.node.id &&
+            isPascalCase(declPath.node.id.name)
           ) {
-            inserts.push(...staticsFor(decl.id.name, relFile));
+            inserts.push(...staticsFor(declPath.node.id.name, relFile));
           } else if (
-            t.isClassDeclaration(decl) &&
-            decl.id &&
-            isPascalCase(decl.id.name)
+            declPath.isClassDeclaration() &&
+            declPath.node.id &&
+            isPascalCase(declPath.node.id.name)
           ) {
-            inserts.push(...staticsFor(decl.id.name, relFile));
-          } else if (t.isVariableDeclaration(decl)) {
-            for (const d of decl.declarations) {
-              if (!t.isIdentifier(d.id) || !isPascalCase(d.id.name)) continue;
-              if (t.isCallExpression(d.init) && isHocCallee(d.init.callee)) {
-                inserts.push(...staticsFor(d.id.name, relFile));
+            inserts.push(...staticsFor(declPath.node.id.name, relFile));
+          } else if (declPath.isVariableDeclaration()) {
+            for (const dPath of declPath.get("declarations")) {
+              const idNode = dPath.node.id;
+              if (!t.isIdentifier(idNode) || !isPascalCase(idNode.name)) {
+                continue;
+              }
+              const initPath = dPath.get("init");
+              if (Array.isArray(initPath) || !initPath.node) continue;
+
+              const isComponent =
+                (initPath.isCallExpression() &&
+                  (isHocCallee(initPath.node.callee, aliases) ||
+                    isGenericHocCallWrappingComponent(initPath))) ||
+                ((initPath.isArrowFunctionExpression() ||
+                  initPath.isFunctionExpression()) &&
+                  containsJSX(initPath));
+
+              if (isComponent) {
+                inserts.push(...staticsFor(idNode.name, relFile));
               }
             }
           }
