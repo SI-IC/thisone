@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { addPlugin } from "../lib/vite-config-patch.mjs";
 import {
   CONFIG_NAMES,
@@ -10,7 +11,9 @@ import {
 } from "../lib/project.mjs";
 
 const REPO = "SI-IC/vue-pick-problem-skill";
+const GITHUB_SPEC_PREFIX = `github:${REPO}#`;
 const EXEC_TIMEOUT_MS = 60_000;
+const INSTALL_TIMEOUT_MS = 300_000;
 
 export function inspectProject(dir) {
   const pkgPath = join(dir, "package.json");
@@ -48,13 +51,34 @@ export function inspectProject(dir) {
   };
 }
 
-function compareTags(a, b) {
+export function compareTags(a, b) {
   const pa = a.slice(1).split(".").map(Number);
   const pb = b.slice(1).split(".").map(Number);
   for (let i = 0; i < 3; i++) {
     if (pa[i] !== pb[i]) return pa[i] - pb[i];
   }
   return 0;
+}
+
+function readDepSpec(dir) {
+  const pkgPath = join(dir, "package.json");
+  if (!existsSync(pkgPath)) return null;
+  let pkg;
+  try {
+    pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+  } catch {
+    return null;
+  }
+  const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+  const spec = deps[PKG_NAME];
+  return typeof spec === "string" ? spec : null;
+}
+
+export function extractPinnedTag(dir) {
+  const spec = readDepSpec(dir);
+  if (!spec) return null;
+  const m = /#(v\d+\.\d+\.\d+)$/.exec(spec);
+  return m ? m[1] : null;
 }
 
 function resolveLatestTag() {
@@ -64,9 +88,9 @@ function resolveLatestTag() {
       ["ls-remote", "--tags", "--refs", `https://github.com/${REPO}`],
       { encoding: "utf8", timeout: EXEC_TIMEOUT_MS },
     );
-    const tags = [...out.matchAll(/refs\/tags\/(v\d+\.\d+\.\d+)/g)].map(
-      (m) => m[1],
-    );
+    const tags = [
+      ...out.matchAll(/refs\/tags\/(v\d+\.\d+\.\d+)(?=\r?\n|\t|$)/g),
+    ].map((m) => m[1]);
     if (!tags.length) return null;
     return tags.sort(compareTags).at(-1);
   } catch {
@@ -74,9 +98,9 @@ function resolveLatestTag() {
   }
 }
 
-function installDep(dir, tag) {
+function installDep(dir, tag, timeout = EXEC_TIMEOUT_MS) {
   const pm = detectPackageManager(dir);
-  const spec = `github:${REPO}#${tag}`;
+  const spec = `${GITHUB_SPEC_PREFIX}${tag}`;
   const cmd =
     pm === "pnpm"
       ? ["pnpm", "add", "-D", spec]
@@ -86,23 +110,72 @@ function installDep(dir, tag) {
   execFileSync(cmd[0], cmd.slice(1), {
     cwd: dir,
     stdio: "inherit",
-    timeout: EXEC_TIMEOUT_MS,
+    timeout,
   });
 }
 
-export function wire(dir) {
+function updatePinnedTag(dir, info) {
+  const skipInstall = process.env.CLAUDE_FEEDBACK_SKIP_INSTALL === "1";
+  if (skipInstall) {
+    console.error(
+      "[claude-feedback] wire: update skipped (CLAUDE_FEEDBACK_SKIP_INSTALL=1)",
+    );
+    return info;
+  }
+  const spec = readDepSpec(dir);
+  if (spec && !spec.startsWith(GITHUB_SPEC_PREFIX)) {
+    console.error(
+      `[claude-feedback] wire: dependency is pinned to a non-standard source (${spec}), skipping automatic update`,
+    );
+    return info;
+  }
+  const latest = resolveLatestTag();
+  if (!latest) {
+    console.error(
+      "[claude-feedback] wire: could not resolve latest tag (network?), skipping update",
+    );
+    return info;
+  }
+  const current = extractPinnedTag(dir);
+  if (current === latest) {
+    console.error(`[claude-feedback] wire: already up to date (${latest})`);
+    return info;
+  }
+  try {
+    installDep(dir, latest, INSTALL_TIMEOUT_MS);
+  } catch (err) {
+    console.error(
+      `[claude-feedback] wire: update failed (${err.message}) — package.json may have been partially modified, check \`git diff package.json\``,
+    );
+    return info;
+  }
+  console.error(
+    `[claude-feedback] wire: updated ${current ?? "unknown"} -> ${latest} — restart your dev server to pick it up`,
+  );
+  return { ...info, updatedFrom: current, updatedTo: latest };
+}
+
+export function wire(dir, opts = {}) {
   const info = inspectProject(dir);
   if (info.reason) {
     console.error(`[claude-feedback] wire: skip (${info.reason})`);
     return info;
   }
   if (info.wired) {
-    console.error("[claude-feedback] wire: already wired, no-op");
-    return info;
+    if (!opts.update) {
+      console.error("[claude-feedback] wire: already wired, no-op");
+      return info;
+    }
+    return updatePinnedTag(dir, info);
   }
 
   const skipInstall = process.env.CLAUDE_FEEDBACK_SKIP_INSTALL === "1";
-  if (!info.depWired && !skipInstall) {
+  let result = info;
+  if (info.depWired) {
+    if (opts.update && !skipInstall) {
+      result = updatePinnedTag(dir, info);
+    }
+  } else if (!skipInstall) {
     const tag = resolveLatestTag();
     if (!tag) {
       console.error(
@@ -120,36 +193,46 @@ export function wire(dir) {
 
   if (!info.configWired) {
     const source = readFileSync(info.configPath, "utf8");
-    const { changed, result, note } = addPlugin(source);
+    const { changed, result: patchedSource, note } = addPlugin(source);
     if (!changed) {
       console.error(
         `[claude-feedback] wire: could not patch ${info.configName} automatically${note ? ` (${note})` : ""} — add manually: import { claudeFeedback } from "vite-plugin-claude-feedback"; and claudeFeedback() in plugins[]`,
       );
-      return info;
+      return result;
     }
     try {
-      writeFileSync(info.configPath, result);
+      writeFileSync(info.configPath, patchedSource);
     } catch (err) {
       console.error(
         `[claude-feedback] wire: could not write ${info.configName} (${err.message})`,
       );
-      return info;
+      return result;
     }
   }
 
   console.error("[claude-feedback] wire: done");
-  return info;
+  return result;
 }
 
 function main() {
   const dir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const update = process.argv.includes("--update");
   try {
-    wire(dir);
+    wire(dir, { update });
   } catch (err) {
     console.error(`[claude-feedback] wire: unexpected error (${err.message})`);
   }
 }
 
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) {
+export function isMainModule(moduleUrl, argvPath) {
+  if (!argvPath) return false;
+  try {
+    return moduleUrl === pathToFileURL(realpathSync(argvPath)).href;
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule(import.meta.url, process.argv[1])) {
   main();
 }

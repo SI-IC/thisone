@@ -33,7 +33,7 @@ The one-time install cost happens only on the first session after enable; later 
 
 ### Manual fallbacks
 
-- `/feedback:setup` — runs the same `wire.mjs` on demand (re-runs, or when the hook was skipped).
+- `/feedback:setup` — runs the same `wire.mjs` on demand (re-runs, or when the hook was skipped). If already wired, checks the pinned GitHub tag against the latest release and reinstalls when it's behind — the SessionStart hook itself never does this network check, so it stays a cheap no-op on every other start.
 - `/feedback:remove` — unwires: reverts the `vite.config` patch and removes the dependency. (Auto-remove is intentionally not done.)
 
 ## Usage
