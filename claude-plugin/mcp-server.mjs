@@ -25,11 +25,12 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { callBridge } from "./lib/bridge-client.mjs";
+import { TOOLS } from "./lib/tools.mjs";
 
 const PREFIX = "/__claude_feedback";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-function readVersion() {
+export function readVersion() {
   try {
     const pkg = JSON.parse(
       readFileSync(join(__dirname, ".claude-plugin", "plugin.json"), "utf8"),
@@ -40,90 +41,18 @@ function readVersion() {
   }
 }
 
-const EMPTY_OBJECT_SCHEMA = {
-  type: "object",
-  properties: {},
-  additionalProperties: false,
-};
-
-const TOOLS = [
-  {
-    name: "get_feedback",
-    description:
-      "Drain and return all pending element-anchored feedback messages the user sent from the Vue+Vite dev preview (Alt+C). Each item has: url, message, element (tag/classes/selector/sourceLoc — start/end line+column of the tag in its .vue file, when resolvable), component (Vue name + __file + parent chain), and recent browser console. Acknowledges (removes) the items it returns, so call once and process the whole batch.",
-    inputSchema: EMPTY_OBJECT_SCHEMA,
-  },
-  {
-    name: "request_store_snapshot",
-    description:
-      "Ask the live browser preview for a snapshot of a Pinia store's state. Omit `store` to list available store ids first. Requires the preview tab to be open.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        store: {
-          type: "string",
-          description:
-            "Pinia store id to snapshot; omit to list available ids.",
-        },
-      },
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "request_component_snapshot",
-    description:
-      "Ask the live browser preview for a snapshot (props + state) of a Vue component. Pass a CSS `selector`, or `last: true` to use the element the user most recently picked. Requires the preview tab to be open.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        selector: {
-          type: "string",
-          description: "CSS selector of the target element.",
-        },
-        last: {
-          type: "boolean",
-          description: "Use the last element the user picked.",
-        },
-      },
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "request_console",
-    description:
-      "Ask the live browser preview for its current console ring-buffer, optionally filtered by `level`. Requires the preview tab to be open.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        level: {
-          type: "string",
-          enum: ["log", "info", "warn", "error", "debug"],
-          description: "Only return entries at this level.",
-        },
-      },
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "feedback_status",
-    description:
-      "Report the dev-server bridge status: whether the preview browser is connected, open tabs, queued feedback count, port and version. Use this to check the tooling is live before asking the user to retry.",
-    inputSchema: EMPTY_OBJECT_SCHEMA,
-  },
-];
-
 /** Wrap a value as a successful MCP text result (pretty-printed JSON). */
-function jsonResult(value) {
+export function jsonResult(value) {
   return { content: [{ type: "text", text: JSON.stringify(value, null, 2) }] };
 }
 
 /** Wrap a human-readable message as an error MCP result (never throws). */
-function errorResult(text) {
+export function errorResult(text) {
   return { content: [{ type: "text", text }], isError: true };
 }
 
 /** Friendly text for a bridge-client transport error code. */
-function bridgeErrorText(error) {
+export function bridgeErrorText(error) {
   if (error === "bridge_not_running") {
     return "The Vue+Vite dev preview (with the claude-feedback plugin) doesn't appear to be running — no live bridge was found at .claude-feedback/bridge.json. Ask the user to start the dev server (and open the preview in the browser), then retry.";
   }
@@ -131,7 +60,7 @@ function bridgeErrorText(error) {
 }
 
 /** Friendly text for a browser-level snapshot failure returned inside data. */
-function snapshotErrorText(code) {
+export function snapshotErrorText(code) {
   switch (code) {
     case "browser_not_connected":
       return "No browser preview tab is connected to the dev server. Ask the user to open the app's dev preview in the browser, then retry.";
@@ -145,7 +74,7 @@ function snapshotErrorText(code) {
 }
 
 /** Forward a snapshot request and interpret both transport- and browser-level errors. */
-async function snapshot(kind, args, projectDir) {
+export async function snapshot(kind, args, projectDir) {
   const r = await callBridge(
     "POST",
     `${PREFIX}/api/request`,
@@ -159,7 +88,7 @@ async function snapshot(kind, args, projectDir) {
   return jsonResult(payload.data);
 }
 
-async function dispatch(name, args) {
+export async function dispatch(name, args) {
   const projectDir = process.env.CLAUDE_PROJECT_DIR;
   switch (name) {
     case "get_feedback": {
@@ -201,24 +130,30 @@ async function dispatch(name, args) {
   }
 }
 
-const server = new Server(
-  { name: "claude-feedback", version: readVersion() },
-  { capabilities: { tools: {} } },
-);
+export function createServer() {
+  const server = new Server(
+    { name: "claude-feedback", version: readVersion() },
+    { capabilities: { tools: {} } },
+  );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: TOOLS,
-}));
-server.setRequestHandler(CallToolRequestSchema, async (req) => {
-  const { name, arguments: args } = req.params;
-  try {
-    return await dispatch(name, args ?? {});
-  } catch (e) {
-    // Last-resort guard: a tool must never throw out of the MCP layer.
-    return errorResult(
-      `Internal error handling ${name}: ${e instanceof Error ? e.message : String(e)}`,
-    );
-  }
-});
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({
+    tools: TOOLS,
+  }));
+  server.setRequestHandler(CallToolRequestSchema, async (req) => {
+    const { name, arguments: args } = req.params;
+    try {
+      return await dispatch(name, args ?? {});
+    } catch (e) {
+      // Last-resort guard: a tool must never throw out of the MCP layer.
+      return errorResult(
+        `Internal error handling ${name}: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
+  });
 
-await server.connect(new StdioServerTransport());
+  return server;
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  await createServer().connect(new StdioServerTransport());
+}

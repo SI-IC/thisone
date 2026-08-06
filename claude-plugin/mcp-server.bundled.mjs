@@ -15530,19 +15530,7 @@ function callBridge(method, path, body, opts = {}) {
   });
 }
 
-// claude-plugin/mcp-server.mjs
-var PREFIX = "/__claude_feedback";
-var __dirname = dirname(fileURLToPath(import.meta.url));
-function readVersion() {
-  try {
-    const pkg = JSON.parse(
-      readFileSync2(join2(__dirname, ".claude-plugin", "plugin.json"), "utf8")
-    );
-    return typeof pkg.version === "string" ? pkg.version : "0.0.0";
-  } catch {
-    return "0.0.0";
-  }
-}
+// claude-plugin/lib/tools.mjs
 var EMPTY_OBJECT_SCHEMA = {
   type: "object",
   properties: {},
@@ -15607,6 +15595,20 @@ var TOOLS = [
     inputSchema: EMPTY_OBJECT_SCHEMA
   }
 ];
+
+// claude-plugin/mcp-server.mjs
+var PREFIX = "/__claude_feedback";
+var __dirname = dirname(fileURLToPath(import.meta.url));
+function readVersion() {
+  try {
+    const pkg = JSON.parse(
+      readFileSync2(join2(__dirname, ".claude-plugin", "plugin.json"), "utf8")
+    );
+    return typeof pkg.version === "string" ? pkg.version : "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
 function jsonResult(value) {
   return { content: [{ type: "text", text: JSON.stringify(value, null, 2) }] };
 }
@@ -15684,21 +15686,36 @@ async function dispatch(name, args) {
       return errorResult(`Unknown tool: ${name}`);
   }
 }
-var server = new Server(
-  { name: "claude-feedback", version: readVersion() },
-  { capabilities: { tools: {} } }
-);
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: TOOLS
-}));
-server.setRequestHandler(CallToolRequestSchema, async (req) => {
-  const { name, arguments: args } = req.params;
-  try {
-    return await dispatch(name, args ?? {});
-  } catch (e) {
-    return errorResult(
-      `Internal error handling ${name}: ${e instanceof Error ? e.message : String(e)}`
-    );
-  }
-});
-await server.connect(new StdioServerTransport());
+function createServer() {
+  const server = new Server(
+    { name: "claude-feedback", version: readVersion() },
+    { capabilities: { tools: {} } }
+  );
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({
+    tools: TOOLS
+  }));
+  server.setRequestHandler(CallToolRequestSchema, async (req) => {
+    const { name, arguments: args } = req.params;
+    try {
+      return await dispatch(name, args ?? {});
+    } catch (e) {
+      return errorResult(
+        `Internal error handling ${name}: ${e instanceof Error ? e.message : String(e)}`
+      );
+    }
+  });
+  return server;
+}
+if (import.meta.url === `file://${process.argv[1]}`) {
+  await createServer().connect(new StdioServerTransport());
+}
+export {
+  bridgeErrorText,
+  createServer,
+  dispatch,
+  errorResult,
+  jsonResult,
+  readVersion,
+  snapshot,
+  snapshotErrorText
+};
