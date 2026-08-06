@@ -1,6 +1,6 @@
 {
   "name": "claude-feedback",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "Receive element-anchored feedback from a Vue+Vite dev preview (Alt+C): page URL, picked element, its Vue component, and browser console — pull-based via MCP.",
   "mcpServers": {
     "claude-feedback": {
