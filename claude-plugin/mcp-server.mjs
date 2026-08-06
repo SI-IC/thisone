@@ -10,9 +10,9 @@
 // Run by Claude Code as: node ${CLAUDE_PLUGIN_ROOT}/mcp-server.mjs (Phase 6 wires
 // this into plugin.json mcpServers).
 
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 // Deliberately the low-level `Server` (not the higher-level `McpServer`): McpServer
 // describes tool inputs with zod raw shapes, but zod is only a transitive dep of the
 // SDK and is not resolvable from this file under pnpm's nested node_modules. `Server`
@@ -154,6 +154,15 @@ export function createServer() {
   return server;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+export function isMainModule(moduleUrl, argvPath) {
+  if (!argvPath) return false;
+  try {
+    return moduleUrl === pathToFileURL(realpathSync(argvPath)).href;
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule(import.meta.url, process.argv[1])) {
   await createServer().connect(new StdioServerTransport());
 }

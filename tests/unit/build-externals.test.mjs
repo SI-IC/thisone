@@ -1,14 +1,53 @@
-import { describe, it, expect, beforeAll } from "vitest";
-import { existsSync, readFileSync } from "node:fs";
+import { describe, it, expect, beforeAll, beforeEach, afterEach } from "vitest";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { PLUGIN_BUNDLE_EXTERNAL } from "../../scripts/build-config.mjs";
-import { main as buildMain } from "../../scripts/build.mjs";
+import { main as buildMain, isMainModule } from "../../scripts/build.mjs";
 
 const distIndex = join(process.cwd(), "dist/index.js");
 
 describe("scripts/build.mjs", () => {
   it("exports main() without running the build on import (side-effect guard)", () => {
     expect(typeof buildMain).toBe("function");
+  });
+});
+
+describe("isMainModule (scripts/build.mjs)", () => {
+  let dir;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "cf-build-main-module-"));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("returns false when argvPath is missing (spawned with no script arg)", () => {
+    expect(isMainModule("file:///x.mjs", undefined)).toBe(false);
+  });
+
+  it("matches a direct invocation (argv[1] === the real file path)", () => {
+    const real = join(dir, "real.mjs");
+    writeFileSync(real, "");
+    expect(isMainModule(pathToFileURL(real).href, real)).toBe(true);
+  });
+
+  it("still matches when argv[1] is a symlink to the real file", () => {
+    const real = join(dir, "real.mjs");
+    const link = join(dir, "link.mjs");
+    writeFileSync(real, "");
+    symlinkSync(real, link);
+    expect(isMainModule(pathToFileURL(real).href, link)).toBe(true);
   });
 });
 

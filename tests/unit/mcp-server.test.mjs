@@ -1,10 +1,15 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import {
   jsonResult,
   errorResult,
   bridgeErrorText,
   snapshotErrorText,
   createServer,
+  isMainModule,
 } from "../../claude-plugin/mcp-server.mjs";
 
 describe("mcp-server.mjs", () => {
@@ -37,5 +42,39 @@ describe("mcp-server.mjs", () => {
   it("createServer() builds a Server without connecting a transport (importable, no side effects)", () => {
     const server = createServer();
     expect(server).toBeTruthy();
+  });
+});
+
+describe("isMainModule", () => {
+  let dir;
+
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "cf-main-module-"));
+  });
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("returns false when argvPath is missing (spawned with no script arg)", () => {
+    expect(isMainModule("file:///x.mjs", undefined)).toBe(false);
+  });
+
+  it("matches a direct invocation (argv[1] === the real file path)", () => {
+    const real = join(dir, "real.mjs");
+    writeFileSync(real, "");
+    expect(isMainModule(pathToFileURL(real).href, real)).toBe(true);
+  });
+
+  it("still matches when argv[1] is a symlink to the real file (regression: naive `file://${argv}` broke this)", () => {
+    const real = join(dir, "real.mjs");
+    const link = join(dir, "link.mjs");
+    writeFileSync(real, "");
+    symlinkSync(real, link);
+    expect(isMainModule(pathToFileURL(real).href, link)).toBe(true);
+  });
+
+  it("returns false when the file simply doesn't exist (malformed input)", () => {
+    expect(isMainModule("file:///x.mjs", join(dir, "nope.mjs"))).toBe(false);
   });
 });

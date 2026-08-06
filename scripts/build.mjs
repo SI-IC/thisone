@@ -15,11 +15,12 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
   rmSync,
 } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { PLUGIN_BUNDLE_EXTERNAL } from "./build-config.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -112,6 +113,15 @@ export async function main() {
   );
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+export function isMainModule(moduleUrl, argvPath) {
+  if (!argvPath) return false;
+  try {
+    return moduleUrl === pathToFileURL(realpathSync(argvPath)).href;
+  } catch {
+    return false;
+  }
+}
+
+if (isMainModule(import.meta.url, process.argv[1])) {
   await main();
 }

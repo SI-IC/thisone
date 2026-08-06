@@ -6887,9 +6887,9 @@ var require_dist = __commonJS({
 });
 
 // claude-plugin/mcp-server.mjs
-import { readFileSync as readFileSync2 } from "node:fs";
+import { readFileSync as readFileSync2, realpathSync } from "node:fs";
 import { dirname, join as join2 } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 // node_modules/.pnpm/zod@4.4.3/node_modules/zod/v4/core/core.js
 var _a;
@@ -15706,7 +15706,15 @@ function createServer() {
   });
   return server;
 }
-if (import.meta.url === `file://${process.argv[1]}`) {
+function isMainModule(moduleUrl, argvPath) {
+  if (!argvPath) return false;
+  try {
+    return moduleUrl === pathToFileURL(realpathSync(argvPath)).href;
+  } catch {
+    return false;
+  }
+}
+if (isMainModule(import.meta.url, process.argv[1])) {
   await createServer().connect(new StdioServerTransport());
 }
 export {
@@ -15714,6 +15722,7 @@ export {
   createServer,
   dispatch,
   errorResult,
+  isMainModule,
   jsonResult,
   readVersion,
   snapshot,
