@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Build the two artifacts that downstream phases depend on:
-//   dist/index.js    — Vite plugin, ESM, platform node (deps like `ws` bundled in)
+//   dist/index.js    — Vite plugin, ESM, platform node
 //   dist/client.js   — browser overlay bundle, IIFE, inlined into dev HTML
 //   dist/index.d.ts  — plugin type declarations (via tsc)
 //
@@ -30,7 +30,6 @@ export async function main() {
   mkdirSync(dist, { recursive: true });
 
   // (a) Vite plugin — ESM for Node. Node builtins stay external automatically;
-  // runtime deps (ws) get bundled so a github-install needs no toolchain.
   await build({
     entryPoints: [resolve(root, "src/plugin/index.ts")],
     outfile: resolve(dist, "index.js"),
@@ -54,11 +53,7 @@ export async function main() {
     sourcemap: false,
   });
 
-  // (c) Type declarations. The plugin now imports from ../server, so the dts
-  // program spans src/{plugin,server}; rootDir is "src" and tsc mirrors the tree
-  // under dist/. Relocate the one file we ship (dist/plugin/index.d.ts) to
-  // dist/index.d.ts and drop the rest — the public type surface references no
-  // server types, so the relocated declaration stays self-contained.
+  // Не менять, потому что tsconfig.dts.json include=["src/plugin/index.ts"] -> tsc emits only dist/plugin/index.d.ts, which the relocation below expects
   execFileSync(
     process.execPath,
     [

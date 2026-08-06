@@ -1567,10 +1567,13 @@
     );
     return out;
   }
-  async function captureElementScreenshot(el) {
+  async function captureElementScreenshot(el, excludeRoot) {
     const full = await domToCanvas(document.documentElement, {
       width: window.innerWidth,
-      height: window.innerHeight
+      height: window.innerHeight,
+      // Не менять, потому что restoreScrollPosition:false рассинхронит canvas с getBoundingClientRect() при scroll
+      features: { restoreScrollPosition: true },
+      filter: excludeRoot ? (node) => node !== excludeRoot : void 0
     });
     const rect = paddedCropRect(el.getBoundingClientRect(), PADDING_PX, {
       width: full.width,
@@ -1695,6 +1698,11 @@ img.shot {
     let statusTimer = null;
     let currentShotUrl = null;
     let dragOffset = null;
+    let pickId = 0;
+    function replaceShotUrl(url) {
+      if (currentShotUrl) URL.revokeObjectURL(currentShotUrl);
+      currentShotUrl = url;
+    }
     function el(tag, cls) {
       const n = doc.createElement(tag);
       if (cls) n.className = cls;
@@ -1759,10 +1767,8 @@ img.shot {
       }, 1500);
     }
     function renderSelection(target) {
-      if (currentShotUrl) {
-        URL.revokeObjectURL(currentShotUrl);
-        currentShotUrl = null;
-      }
+      const myPickId = ++pickId;
+      replaceShotUrl(null);
       body.innerHTML = "";
       const pathText = formatElementPath(target);
       const pathEl = el("div", "path");
@@ -1773,16 +1779,19 @@ img.shot {
       });
       const imgStatus = el("div", "status");
       body.append(pathEl, pathStatus);
-      captureElementScreenshot(target).then((blob) => {
+      captureElementScreenshot(target, host).then((blob) => {
+        if (myPickId !== pickId) return;
         const img = el("img", "shot");
         img.alt = "screenshot";
-        currentShotUrl = URL.createObjectURL(blob);
-        img.src = currentShotUrl;
+        const url = URL.createObjectURL(blob);
+        replaceShotUrl(url);
+        img.src = url;
         img.addEventListener("click", () => {
           void copyImage(blob).then((r) => showStatus(imgStatus, r.ok));
         });
         body.append(img, imgStatus);
       }).catch(() => {
+        if (myPickId !== pickId) return;
         imgStatus.textContent = "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u0434\u0435\u043B\u0430\u0442\u044C \u0441\u043A\u0440\u0438\u043D\u0448\u043E\u0442";
         imgStatus.classList.add("fail");
         body.append(imgStatus);
@@ -1886,11 +1895,9 @@ img.shot {
       if (!host || !open) return;
       cancelPick();
       open = false;
+      pickId++;
       panel.classList.add("hidden");
-      if (currentShotUrl) {
-        URL.revokeObjectURL(currentShotUrl);
-        currentShotUrl = null;
-      }
+      replaceShotUrl(null);
     }
     return {
       open: openModal,

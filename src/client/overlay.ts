@@ -76,6 +76,12 @@ export function createOverlay(): Overlay {
   let statusTimer: ReturnType<typeof setTimeout> | null = null;
   let currentShotUrl: string | null = null;
   let dragOffset: { dx: number; dy: number } | null = null;
+  let pickId = 0;
+
+  function replaceShotUrl(url: string | null): void {
+    if (currentShotUrl) URL.revokeObjectURL(currentShotUrl);
+    currentShotUrl = url;
+  }
 
   function el<K extends keyof HTMLElementTagNameMap>(
     tag: K,
@@ -155,10 +161,8 @@ export function createOverlay(): Overlay {
   }
 
   function renderSelection(target: Element): void {
-    if (currentShotUrl) {
-      URL.revokeObjectURL(currentShotUrl);
-      currentShotUrl = null;
-    }
+    const myPickId = ++pickId;
+    replaceShotUrl(null);
     body.innerHTML = "";
 
     const pathText = formatElementPath(target);
@@ -172,18 +176,21 @@ export function createOverlay(): Overlay {
     const imgStatus = el("div", "status");
     body.append(pathEl, pathStatus);
 
-    captureElementScreenshot(target)
+    captureElementScreenshot(target, host)
       .then((blob) => {
+        if (myPickId !== pickId) return;
         const img = el("img", "shot");
         img.alt = "screenshot";
-        currentShotUrl = URL.createObjectURL(blob);
-        img.src = currentShotUrl;
+        const url = URL.createObjectURL(blob);
+        replaceShotUrl(url);
+        img.src = url;
         img.addEventListener("click", () => {
           void copyImage(blob).then((r) => showStatus(imgStatus, r.ok));
         });
         body.append(img, imgStatus);
       })
       .catch(() => {
+        if (myPickId !== pickId) return;
         imgStatus.textContent = "Не удалось сделать скриншот";
         imgStatus.classList.add("fail");
         body.append(imgStatus);
@@ -296,11 +303,9 @@ export function createOverlay(): Overlay {
     if (!host || !open) return;
     cancelPick();
     open = false;
+    pickId++;
     panel.classList.add("hidden");
-    if (currentShotUrl) {
-      URL.revokeObjectURL(currentShotUrl);
-      currentShotUrl = null;
-    }
+    replaceShotUrl(null);
   }
 
   return {

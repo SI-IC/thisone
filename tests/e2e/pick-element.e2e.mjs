@@ -91,6 +91,67 @@ try {
     assert.match(src ?? "", /^blob:/);
   });
 
+  await check(
+    "edge:scrolled page — screenshot crop targets the picked element, not the top-of-document content",
+    async () => {
+      const spage = await context.newPage();
+      try {
+        await spage.goto(base, { waitUntil: "networkidle" });
+        await spage.evaluate(() => {
+          const spacer = document.createElement("div");
+          spacer.style.height = `${window.innerHeight * 2}px`;
+          spacer.style.backgroundColor = "rgb(0, 0, 220)";
+          document.body.insertBefore(spacer, document.body.firstChild);
+
+          const btn = document.querySelector("button");
+          const wrap = document.createElement("div");
+          wrap.style.display = "inline-block";
+          wrap.style.padding = "100px";
+          wrap.style.backgroundColor = "rgb(0, 200, 0)";
+          btn.parentNode.insertBefore(wrap, btn);
+          wrap.appendChild(btn);
+
+          const wrapTop = wrap.getBoundingClientRect().top + window.scrollY;
+          const wrapHeight = wrap.getBoundingClientRect().height;
+          const target = wrapTop - window.innerHeight / 2 + wrapHeight / 2;
+          window.scrollTo(0, Math.max(0, target));
+        });
+        await spage.keyboard.down("Alt");
+        await spage.keyboard.press("KeyC");
+        await spage.keyboard.up("Alt");
+        await spage
+          .locator("#__pick_element_root >> css=.panel")
+          .waitFor({ state: "visible", timeout: 2000 });
+        await spage.locator('button:has-text("count is")').click();
+        const simg = spage.locator("#__pick_element_root >> css=img.shot");
+        await simg.waitFor({ state: "visible", timeout: 5000 });
+        const scrollYAtCapture = await spage.evaluate(() => window.scrollY);
+        assert.ok(
+          scrollYAtCapture > 0,
+          "page should be scrolled at capture time",
+        );
+        const rgba = await simg.evaluate(async (imgEl) => {
+          const resp = await fetch(imgEl.src);
+          const blob = await resp.blob();
+          const bitmap = await createImageBitmap(blob);
+          const canvas = document.createElement("canvas");
+          canvas.width = bitmap.width;
+          canvas.height = bitmap.height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(bitmap, 0, 0);
+          const { data } = ctx.getImageData(4, 4, 1, 1);
+          return [data[0], data[1], data[2], data[3]];
+        });
+        assert.ok(
+          rgba[3] === 255 && rgba[1] > 150 && rgba[0] < 100 && rgba[2] < 100,
+          `expected opaque green wrapper pixel near the crop corner (the picked button's own padded surroundings), got rgba(${rgba.join(",")}) — a wrong/transparent pixel means the crop landed on the un-scrolled top of the document instead`,
+        );
+      } finally {
+        await spage.close();
+      }
+    },
+  );
+
   await check("clicking the path copies it to the clipboard", async () => {
     await pathEl.click();
     const clip = await page.evaluate(() => navigator.clipboard.readText());
@@ -127,6 +188,8 @@ try {
       await pathEl.waitFor({ state: "visible", timeout: 2000 });
       const text = await pathEl.textContent();
       assert.doesNotMatch(text ?? "", /button/);
+      assert.match(text ?? "", /<h1>/);
+      assert.match(text ?? "", /App\.vue:7:/);
     },
   );
 
