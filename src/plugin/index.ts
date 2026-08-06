@@ -10,6 +10,7 @@ import type { IncomingMessage } from "node:http";
 import type { Duplex } from "node:stream";
 import type { Plugin, ViteDevServer } from "vite";
 import { createBridge, type Bridge } from "../server/bridge.js";
+import { injectSourceLocations } from "./inject-src-loc.js";
 
 export interface ClaudeFeedbackOptions {
   /** Hotkey code that opens the overlay together with Alt (default 'KeyC'). */
@@ -68,9 +69,15 @@ export function claudeFeedback(options: ClaudeFeedbackOptions = {}): Plugin {
   return {
     name: "vite-plugin-claude-feedback",
     apply: "serve",
+    enforce: "pre",
 
     config(_config, env) {
       isBuild = env.command === "build";
+    },
+
+    transform(code: string, id: string) {
+      if (isBuild || !id.endsWith(".vue")) return;
+      return injectSourceLocations(code, id);
     },
 
     transformIndexHtml: {

@@ -9,6 +9,7 @@ import { mkdtempSync, rmSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import claudeFeedback from "../../src/plugin/index";
+import { injectSourceLocations } from "../../src/plugin/inject-src-loc";
 
 type AnyPlugin = ReturnType<typeof claudeFeedback> & Record<string, any>;
 
@@ -16,6 +17,12 @@ function callConfig(plugin: AnyPlugin, command: "serve" | "build") {
   const hook = plugin.config as any;
   const fn = typeof hook === "function" ? hook : hook?.handler;
   fn?.call(plugin, {}, { command, mode: command });
+}
+
+function callTransform2(plugin: AnyPlugin, code: string, id: string) {
+  const t = plugin.transform as any;
+  const handler = typeof t === "function" ? t : t.handler;
+  return handler.call(plugin, code, id);
 }
 
 function callTransform(plugin: AnyPlugin, html: string) {
@@ -66,6 +73,45 @@ describe("plugin transformIndexHtml", () => {
 
   it("declares apply:'serve'", () => {
     expect((claudeFeedback() as AnyPlugin).apply).toBe("serve");
+  });
+});
+
+describe("plugin transform (.vue source location)", () => {
+  it("declares enforce:'pre' so it runs before @vitejs/plugin-vue", () => {
+    expect((claudeFeedback() as AnyPlugin).enforce).toBe("pre");
+  });
+
+  it("injects data-src-loc into .vue source in serve mode", () => {
+    const plugin = claudeFeedback() as AnyPlugin;
+    callConfig(plugin, "serve");
+    const src = `<template>\n  <div>hi</div>\n</template>\n`;
+    const out = callTransform2(plugin, src, "/proj/src/Counter.vue");
+    expect(out).toBe(injectSourceLocations(src, "/proj/src/Counter.vue"));
+    expect(out).toContain('data-src-loc="/proj/src/Counter.vue:2:3-2:16"');
+  });
+
+  it("does NOT transform in build mode (gating)", () => {
+    const plugin = claudeFeedback() as AnyPlugin;
+    callConfig(plugin, "build");
+    const src = `<template><div>hi</div></template>`;
+    expect(
+      callTransform2(plugin, src, "/proj/src/Counter.vue"),
+    ).toBeUndefined();
+  });
+
+  it("ignores non-.vue ids and .vue sub-requests (?vue&type=...)", () => {
+    const plugin = claudeFeedback() as AnyPlugin;
+    callConfig(plugin, "serve");
+    expect(
+      callTransform2(plugin, "export default {}", "/proj/src/util.ts"),
+    ).toBeUndefined();
+    expect(
+      callTransform2(
+        plugin,
+        "export default {}",
+        "/proj/src/Counter.vue?vue&type=script",
+      ),
+    ).toBeUndefined();
   });
 });
 
