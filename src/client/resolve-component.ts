@@ -3,7 +3,11 @@
 // (`el.__vueParentComponent`, `type.__file`) and degrades to null/anonymous when
 // they are absent (element outside the app, production build without `__file`).
 
-import type { ComponentDescriptor, ElementDescriptor } from "../server/types";
+import type {
+  ComponentDescriptor,
+  ElementDescriptor,
+  SourceLocation,
+} from "../server/types";
 
 export type ResolvedComponent = ComponentDescriptor;
 
@@ -79,11 +83,27 @@ function cssPath(el: Element): string {
   return parts.join(" > ");
 }
 
+const SRC_LOC_RE = /^(.+):(\d+):(\d+)-(\d+):(\d+)$/;
+
+function parseSourceLoc(raw: string | null): SourceLocation | null {
+  if (!raw) return null;
+  const m = SRC_LOC_RE.exec(raw);
+  if (!m) return null;
+  return {
+    file: m[1],
+    startLine: Number(m[2]),
+    startColumn: Number(m[3]),
+    endLine: Number(m[4]),
+    endColumn: Number(m[5]),
+  };
+}
+
 export function describeElement(el: Element): ElementDescriptor {
   return {
     tag: el.tagName.toLowerCase(),
     classes: Array.from(el.classList ?? []),
     text: (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 120),
     selector: cssPath(el),
+    sourceLoc: parseSourceLoc(el.getAttribute("data-src-loc")),
   };
 }

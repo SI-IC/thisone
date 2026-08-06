@@ -89,4 +89,29 @@ describe("describeElement", () => {
       document.getElementById("go"),
     );
   });
+
+  it("parses sourceLoc from a data-src-loc attribute", () => {
+    document.body.innerHTML =
+      '<div data-src-loc="/proj/src/Counter.vue:2:3-2:16">hi</div>';
+    const d = describeElement(document.querySelector("div")!);
+    expect(d.sourceLoc).toEqual({
+      file: "/proj/src/Counter.vue",
+      startLine: 2,
+      startColumn: 3,
+      endLine: 2,
+      endColumn: 16,
+    });
+  });
+
+  it("sourceLoc is null when the attribute is absent (element outside a picked template)", () => {
+    document.body.innerHTML = "<div>hi</div>";
+    const d = describeElement(document.querySelector("div")!);
+    expect(d.sourceLoc).toBeNull();
+  });
+
+  it("sourceLoc is null for a malformed data-src-loc value (hostile input)", () => {
+    document.body.innerHTML = '<div data-src-loc="garbage">hi</div>';
+    const d = describeElement(document.querySelector("div")!);
+    expect(d.sourceLoc).toBeNull();
+  });
 });

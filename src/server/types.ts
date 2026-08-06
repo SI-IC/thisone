@@ -8,6 +8,14 @@ export interface ConsoleEntry {
   text: string;
 }
 
+export interface SourceLocation {
+  file: string;
+  startLine: number;
+  startColumn: number;
+  endLine: number;
+  endColumn: number;
+}
+
 /** Best-effort description of the picked DOM element. */
 export interface ElementDescriptor {
   tag: string;
@@ -16,6 +24,7 @@ export interface ElementDescriptor {
   text: string;
   /** Stable-ish CSS path (nth-of-type based). */
   selector: string;
+  sourceLoc: SourceLocation | null;
 }
 
 /** Resolved Vue component for the picked element (null outside the app). */
