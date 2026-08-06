@@ -84,8 +84,10 @@ the overlay, clipboard, and screenshot code need **no changes**.
 
 `package.json` **dependencies** (not devDependencies — the transform runs inside the
 consuming project's dev server, so babel must be resolvable at runtime by the plugin):
-`@babel/core`, `@babel/parser`, `@babel/traverse`, `@babel/generator`, `@babel/types`.
-No new dependency on `react`/`react-dom` — routing is by file extension only.
+`@babel/parser`, `@babel/traverse`, `@babel/generator`, `@babel/types`. `@babel/core` is
+not needed — the transform only parses, walks, and regenerates an AST directly, never
+runs babel's plugin/preset pipeline. No new dependency on `react`/`react-dom` — routing
+is by file extension only.
 
 ## Rejected alternatives
 
