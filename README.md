@@ -1,6 +1,6 @@
 # claude-feedback
 
-Send **element-anchored feedback** from a live Vue 3 + Vite dev preview straight to Claude Code. Press **Alt+C** in the preview, optionally pick an element, type what you want changed, and send. Along with your message Claude receives the page URL, a descriptor of the picked element, its **Vue component** (name + `__file:line` + parent chain), and the recent **browser console**. On request Claude can also pull a snapshot of a Pinia store or component state.
+Send **element-anchored feedback** from a live Vue 3 + Vite dev preview straight to Claude Code. Press **Alt+C** in the preview, optionally pick an element, type what you want changed, and send. Along with your message Claude receives the page URL, a descriptor of the picked element (tag/classes/selector plus its start/end line and column in the `.vue` source, when resolvable), its **Vue component** (name + `__file:line` + parent chain), and the recent **browser console**. On request Claude can also pull a snapshot of a Pinia store or component state.
 
 Two cooperating artifacts live in this one public repo (`https://github.com/SI-IC/vue-pick-problem-skill`):
 

@@ -206,13 +206,27 @@
     }
     return parts.join(" > ");
   }
+  var SRC_LOC_RE = /^(.+):(\d+):(\d+)-(\d+):(\d+)$/;
+  function parseSourceLoc(raw) {
+    if (!raw) return null;
+    const m = SRC_LOC_RE.exec(raw);
+    if (!m) return null;
+    return {
+      file: m[1],
+      startLine: Number(m[2]),
+      startColumn: Number(m[3]),
+      endLine: Number(m[4]),
+      endColumn: Number(m[5])
+    };
+  }
   function describeElement(el) {
     var _a, _b;
     return {
       tag: el.tagName.toLowerCase(),
       classes: Array.from((_a = el.classList) != null ? _a : []),
       text: ((_b = el.textContent) != null ? _b : "").replace(/\s+/g, " ").trim().slice(0, 120),
-      selector: cssPath(el)
+      selector: cssPath(el),
+      sourceLoc: parseSourceLoc(el.getAttribute("data-src-loc"))
     };
   }
 

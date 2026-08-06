@@ -37,8 +37,8 @@ await build({
   platform: "node",
   target: "node18",
   sourcemap: false,
-  // vite is a peer dependency — never bundle it.
-  external: ["vite"],
+  // Не менять, потому что бандлинг @vue/compiler-sfc падает на его опциональных template-engine require().
+  external: ["vite", "@vue/compiler-sfc", "@vue/compiler-core"],
   // The plugin now bundles the bridge, which bundles `ws`. ws require()s node
   // builtins; esbuild's ESM output routes those through a __require shim that
   // throws ("Dynamic require of events") unless a real `require` exists. Define

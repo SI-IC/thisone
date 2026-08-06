@@ -2081,7 +2081,7 @@ var require_extension = __commonJS({
       if (dest[name] === void 0) dest[name] = [elem];
       else dest[name].push(elem);
     }
-    function parse(header) {
+    function parse2(header) {
       const offers = /* @__PURE__ */ Object.create(null);
       let params = /* @__PURE__ */ Object.create(null);
       let mustUnescape = false;
@@ -2221,7 +2221,7 @@ var require_extension = __commonJS({
         }).join(", ");
       }).join(", ");
     }
-    module.exports = { format, parse };
+    module.exports = { format, parse: parse2 };
   }
 });
 
@@ -2255,7 +2255,7 @@ var require_websocket = __commonJS({
     var {
       EventTarget: { addEventListener, removeEventListener }
     } = require_event_target();
-    var { format, parse } = require_extension();
+    var { format, parse: parse2 } = require_extension();
     var { toBuffer } = require_buffer_util();
     var kAborted = /* @__PURE__ */ Symbol("kAborted");
     var protocolVersions = [8, 13];
@@ -2924,7 +2924,7 @@ var require_websocket = __commonJS({
           }
           let extensions;
           try {
-            extensions = parse(secWebSocketExtensions);
+            extensions = parse2(secWebSocketExtensions);
           } catch (err) {
             const message = "Invalid Sec-WebSocket-Extensions header";
             abortHandshake(websocket, socket, message);
@@ -3214,7 +3214,7 @@ var require_subprotocol = __commonJS({
   "node_modules/.pnpm/ws@8.19.0/node_modules/ws/lib/subprotocol.js"(exports, module) {
     "use strict";
     var { tokenChars } = require_validation();
-    function parse(header) {
+    function parse2(header) {
       const protocols = /* @__PURE__ */ new Set();
       let start = -1;
       let end = -1;
@@ -3250,7 +3250,7 @@ var require_subprotocol = __commonJS({
       protocols.add(protocol);
       return protocols;
     }
-    module.exports = { parse };
+    module.exports = { parse: parse2 };
   }
 });
 
@@ -4035,6 +4035,63 @@ function sendJson(res, statusCode, obj) {
   res.end(body);
 }
 
+// src/plugin/inject-src-loc.ts
+import { parse } from "@vue/compiler-sfc";
+import {
+  NodeTypes,
+  ElementTypes
+} from "@vue/compiler-core";
+function collectInsertions(nodes, file, out) {
+  for (const node of nodes) {
+    switch (node.type) {
+      case NodeTypes.ELEMENT: {
+        if (node.tagType !== ElementTypes.TEMPLATE) {
+          const { start, end } = node.loc;
+          const value = `${file}:${start.line}:${start.column}-${end.line}:${end.column}`;
+          out.push({
+            offset: start.offset + 1 + node.tag.length,
+            text: ` data-src-loc="${value}"`
+          });
+        }
+        collectInsertions(node.children, file, out);
+        break;
+      }
+      case NodeTypes.IF:
+        for (const branch of node.branches) {
+          collectInsertions(branch.children, file, out);
+        }
+        break;
+      case NodeTypes.FOR:
+        collectInsertions(node.children, file, out);
+        break;
+      default:
+        break;
+    }
+  }
+}
+function injectSourceLocations(source, file) {
+  let ast;
+  try {
+    ast = parse(source, { filename: file }).descriptor.template?.ast;
+  } catch {
+    return source;
+  }
+  if (!ast) return source;
+  const insertions = [];
+  try {
+    collectInsertions(ast.children, file, insertions);
+  } catch {
+    return source;
+  }
+  if (insertions.length === 0) return source;
+  insertions.sort((a, b) => b.offset - a.offset);
+  let result = source;
+  for (const ins of insertions) {
+    result = result.slice(0, ins.offset) + ins.text + result.slice(ins.offset);
+  }
+  return result;
+}
+
 // src/plugin/index.ts
 var WS_PATH = "/__claude_feedback/ws";
 var here = dirname(fileURLToPath(import.meta.url));
@@ -4079,8 +4136,13 @@ function claudeFeedback(options = {}) {
   return {
     name: "vite-plugin-claude-feedback",
     apply: "serve",
+    enforce: "pre",
     config(_config, env) {
       isBuild = env.command === "build";
+    },
+    transform(code, id) {
+      if (isBuild || !id.endsWith(".vue")) return;
+      return injectSourceLocations(code, id);
     },
     transformIndexHtml: {
       order: "pre",

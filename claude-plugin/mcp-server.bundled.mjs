@@ -15551,7 +15551,7 @@ var EMPTY_OBJECT_SCHEMA = {
 var TOOLS = [
   {
     name: "get_feedback",
-    description: "Drain and return all pending element-anchored feedback messages the user sent from the Vue+Vite dev preview (Alt+C). Each item has: url, message, element (tag/classes/selector), component (Vue name + __file + parent chain), and recent browser console. Acknowledges (removes) the items it returns, so call once and process the whole batch.",
+    description: "Drain and return all pending element-anchored feedback messages the user sent from the Vue+Vite dev preview (Alt+C). Each item has: url, message, element (tag/classes/selector/sourceLoc \u2014 start/end line+column of the tag in its .vue file, when resolvable), component (Vue name + __file + parent chain), and recent browser console. Acknowledges (removes) the items it returns, so call once and process the whole batch.",
     inputSchema: EMPTY_OBJECT_SCHEMA
   },
   {
