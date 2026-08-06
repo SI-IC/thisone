@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import pickElement from "../../src/plugin/index";
 import { injectSourceLocations } from "../../src/plugin/inject-src-loc";
+import { injectSourceLocations as injectReactSourceLocations } from "../../src/plugin/inject-src-loc-react";
 
 type AnyPlugin = ReturnType<typeof pickElement> & Record<string, any>;
 
@@ -104,6 +105,40 @@ describe("plugin transform (.vue source location)", () => {
         "export default {}",
         "/proj/src/Counter.vue?vue&type=script",
       ),
+    ).toBeUndefined();
+  });
+});
+
+describe("plugin transform (.tsx/.jsx source location)", () => {
+  it("injects data-src-loc into .tsx source in serve mode", () => {
+    const plugin = pickElement() as AnyPlugin;
+    callConfig(plugin, "serve");
+    const src = `function Foo() {\n  return <div>hi</div>;\n}\n`;
+    const out = callTransform2(plugin, src, "/proj/src/Foo.tsx");
+    expect(out).toBe(injectReactSourceLocations(src, "/proj/src/Foo.tsx"));
+    expect(out).toContain('data-src-loc={"/proj/src/Foo.tsx:2:10-2:23"}');
+  });
+
+  it("injects data-src-loc into .jsx source in serve mode", () => {
+    const plugin = pickElement() as AnyPlugin;
+    callConfig(plugin, "serve");
+    const src = `function Foo() {\n  return <span>hi</span>;\n}\n`;
+    const out = callTransform2(plugin, src, "/proj/src/Foo.jsx");
+    expect(out).toContain('data-src-loc={"/proj/src/Foo.jsx:2:10-2:25"}');
+  });
+
+  it("does NOT transform .tsx in build mode (gating)", () => {
+    const plugin = pickElement() as AnyPlugin;
+    callConfig(plugin, "build");
+    const src = `function Foo() { return <div>hi</div>; }`;
+    expect(callTransform2(plugin, src, "/proj/src/Foo.tsx")).toBeUndefined();
+  });
+
+  it("ignores non-.tsx/.jsx/.vue ids", () => {
+    const plugin = pickElement() as AnyPlugin;
+    callConfig(plugin, "serve");
+    expect(
+      callTransform2(plugin, "export const x = 1;", "/proj/src/util.ts"),
     ).toBeUndefined();
   });
 });

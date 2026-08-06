@@ -2,7 +2,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
-import { injectSourceLocations } from "./inject-src-loc.js";
+import { injectSourceLocations as injectVueSourceLocations } from "./inject-src-loc.js";
+import { injectSourceLocations as injectReactSourceLocations } from "./inject-src-loc-react.js";
 
 export interface PickElementOptions {
   hotkey?: string;
@@ -39,8 +40,12 @@ export function pickElement(options: PickElementOptions = {}): Plugin {
     },
 
     transform(code: string, id: string) {
-      if (isBuild || !id.endsWith(".vue")) return;
-      return injectSourceLocations(code, id);
+      if (isBuild) return;
+      if (id.endsWith(".vue")) return injectVueSourceLocations(code, id);
+      if (id.endsWith(".tsx") || id.endsWith(".jsx")) {
+        return injectReactSourceLocations(code, id);
+      }
+      return;
     },
 
     transformIndexHtml: {
