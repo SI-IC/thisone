@@ -7,6 +7,73 @@
     return last.replace(/\.\w+$/, "");
   }
 
+  // src/client/resolve-component-react.ts
+  var HOC_SYMBOL_TAGS = /* @__PURE__ */ new Set([
+    "Symbol(react.memo)",
+    "Symbol(react.forward_ref)"
+  ]);
+  function innerTarget(type) {
+    if (type && typeof type === "object") {
+      if (type.type) return type.type;
+      if (type.render) return type.render;
+    }
+    return void 0;
+  }
+  function isComponentFiberType(type) {
+    if (typeof type === "function") return true;
+    if (type && typeof type === "object" && typeof type.$$typeof === "symbol") {
+      return HOC_SYMBOL_TAGS.has(type.$$typeof.toString());
+    }
+    return false;
+  }
+  function reactComponentName(type) {
+    if (type == null ? void 0 : type.displayName) return String(type.displayName);
+    if (type == null ? void 0 : type.name) return String(type.name);
+    if (type == null ? void 0 : type.__name) return String(type.__name);
+    if (type == null ? void 0 : type.__file) return baseName(String(type.__file));
+    const inner = innerTarget(type);
+    if (inner) return reactComponentName(inner);
+    return "Anonymous";
+  }
+  function fileOf(type) {
+    var _a2, _b;
+    return (_b = type == null ? void 0 : type.__file) != null ? _b : (_a2 = innerTarget(type)) == null ? void 0 : _a2.__file;
+  }
+  function getReactFiberKey(el) {
+    return Object.keys(el).find((k) => k.startsWith("__reactFiber$"));
+  }
+  function resolveReactComponent(el) {
+    var _a2;
+    if (!el) return null;
+    const key = getReactFiberKey(el);
+    if (!key) return null;
+    const start = el[key];
+    if (!start) return null;
+    const chain = [];
+    let resolvedName = null;
+    let resolvedFile = null;
+    let cur = start;
+    let guard = 0;
+    while (cur && guard++ < 1e3) {
+      const type = cur.type;
+      if (isComponentFiberType(type)) {
+        const name = reactComponentName(type);
+        chain.push(name);
+        const file = fileOf(type);
+        if (!resolvedName && file) {
+          resolvedName = name;
+          resolvedFile = String(file);
+        }
+      }
+      cur = cur.return;
+    }
+    if (!resolvedName) {
+      resolvedName = (_a2 = chain[0]) != null ? _a2 : "Anonymous";
+      resolvedFile = null;
+    }
+    return { name: resolvedName, file: resolvedFile, chain };
+  }
+
   // src/client/resolve-component.ts
   function componentName(instance) {
     var _a2;
@@ -17,6 +84,11 @@
     return "Anonymous";
   }
   function resolveComponent(el) {
+    if (!el) return null;
+    if (el.__vueParentComponent) return resolveVueComponent(el);
+    return resolveReactComponent(el);
+  }
+  function resolveVueComponent(el) {
     var _a2, _b;
     if (!el) return null;
     const start = el.__vueParentComponent;
