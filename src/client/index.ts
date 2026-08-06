@@ -19,6 +19,7 @@ function boot(): void {
   const cfg = window.__PICK_ELEMENT_CFG__ ?? {};
   const hotkey = cfg.hotkey ?? "KeyC";
   const overlay = createOverlay();
+  overlay.mount();
 
   window.addEventListener(
     "keydown",

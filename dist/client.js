@@ -1634,6 +1634,46 @@
     }
   }
 
+  // src/client/target-store.ts
+  var ENABLED_KEY = "pick-element:target-enabled";
+  var POS_KEY = "pick-element:target-pos";
+  var EDGES = ["top", "right", "bottom", "left"];
+  function loadTargetEnabled() {
+    try {
+      return localStorage.getItem(ENABLED_KEY) === "1";
+    } catch {
+      return false;
+    }
+  }
+  function saveTargetEnabled(enabled) {
+    try {
+      localStorage.setItem(ENABLED_KEY, enabled ? "1" : "0");
+    } catch {
+    }
+  }
+  function loadTargetPosition() {
+    try {
+      const raw = localStorage.getItem(POS_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (EDGES.includes(parsed == null ? void 0 : parsed.edge) && typeof (parsed == null ? void 0 : parsed.offset) === "number" && Number.isFinite(parsed.offset)) {
+        return {
+          edge: parsed.edge,
+          offset: Math.min(1, Math.max(0, parsed.offset))
+        };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+  function saveTargetPosition(pos) {
+    try {
+      localStorage.setItem(POS_KEY, JSON.stringify(pos));
+    } catch {
+    }
+  }
+
   // src/client/overlay.ts
   var HOST_ID = "__pick_element_root";
   var STYLE = `
@@ -1654,6 +1694,12 @@
   font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 4px;
 }
 .close:hover { background: #313244; color: #eee; }
+.target-toggle {
+  cursor: pointer; border: none; background: transparent; color: #a6adc8;
+  padding: 2px 6px; border-radius: 4px; display: flex; align-items: center;
+}
+.target-toggle:hover { background: #313244; color: #eee; }
+.target-toggle.active { color: #89b4fa; }
 .body { padding: 12px; }
 .hint { color: #a6adc8; }
 .path {
@@ -1665,6 +1711,17 @@ img.shot {
   display: block; max-width: 100%; margin-top: 8px; cursor: pointer;
   border: 1px solid #45475a; border-radius: 6px;
 }
+img.shot:hover { border-color: #89b4fa; }
+.target-btn {
+  position: fixed; z-index: 2147483647; width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: #1e1e2e; border: 1px solid #45475a; color: #89b4fa; cursor: pointer;
+}
+.target-btn:hover { background: #313244; }
+.target-btn.edge-right { right: 0; border-radius: 8px 0 0 8px; border-right: none; }
+.target-btn.edge-left { left: 0; border-radius: 0 8px 8px 0; border-left: none; }
+.target-btn.edge-top { top: 0; border-radius: 0 0 8px 8px; border-top: none; }
+.target-btn.edge-bottom { bottom: 0; border-radius: 8px 8px 0 0; border-bottom: none; }
 .status { font-size: 11px; color: #a6b8fa; min-height: 14px; margin-top: 4px; }
 .status.fail { color: #f38ba8; }
 .hidden { display: none !important; }
@@ -1683,6 +1740,11 @@ img.shot {
   padding: 2px 6px; border-radius: 4px; font-size: 11px; white-space: nowrap;
 }
 `;
+  function targetIcon(size) {
+    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>`;
+  }
+  var EDGE_BUTTON_SIZE = 44;
+  var DEFAULT_TARGET_POSITION = { edge: "right", offset: 0.5 };
   function createOverlay() {
     const doc = document;
     const win = window;
@@ -1694,10 +1756,15 @@ img.shot {
     let pickHint;
     let box;
     let tip;
+    let targetToggle;
+    let targetBtn;
     let open = false;
     let statusTimer = null;
     let currentShotUrl = null;
     let dragOffset = null;
+    let targetEnabled = false;
+    let targetPosition = DEFAULT_TARGET_POSITION;
+    let targetDragging = false;
     let pickId = 0;
     function replaceShotUrl(url) {
       if (currentShotUrl) URL.revokeObjectURL(currentShotUrl);
@@ -1714,13 +1781,25 @@ img.shot {
         y: Math.max(16, win.innerHeight - 200)
       };
     }
+    function clampPanelPosition(x, y) {
+      const width = panel.getBoundingClientRect().width || panel.offsetWidth;
+      const headerHeight = header.getBoundingClientRect().height || header.offsetHeight;
+      const maxX = Math.max(0, win.innerWidth - width);
+      const maxY = Math.max(0, win.innerHeight - headerHeight);
+      return {
+        x: Math.min(Math.max(0, x), maxX),
+        y: Math.min(Math.max(0, y), maxY)
+      };
+    }
     function applyPosition() {
       var _a2;
       const pos = (_a2 = loadPosition()) != null ? _a2 : defaultPosition();
-      panel.style.left = pos.x + "px";
-      panel.style.top = pos.y + "px";
+      const clamped = clampPanelPosition(pos.x, pos.y);
+      panel.style.left = clamped.x + "px";
+      panel.style.top = clamped.y + "px";
     }
     function ensureMounted() {
+      var _a2;
       if (host) return;
       host = doc.getElementById(HOST_ID);
       if (!host) {
@@ -1736,10 +1815,17 @@ img.shot {
       header = el("div", "header");
       const title = el("span", "title");
       title.textContent = "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u044D\u043B\u0435\u043C\u0435\u043D\u0442";
+      targetToggle = el("button", "target-toggle");
+      targetToggle.innerHTML = targetIcon(14);
+      targetToggle.title = "\u041F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0442\u044C \u043A\u043D\u043E\u043F\u043A\u0443 \u0431\u044B\u0441\u0442\u0440\u043E\u0433\u043E \u0434\u043E\u0441\u0442\u0443\u043F\u0430 \u0443 \u043A\u0440\u0430\u044F \u044D\u043A\u0440\u0430\u043D\u0430";
+      targetToggle.addEventListener(
+        "click",
+        () => setTargetEnabled(!targetEnabled)
+      );
       const closeBtn = el("button", "close");
       closeBtn.textContent = "\xD7";
       closeBtn.addEventListener("click", () => close());
-      header.append(title, closeBtn);
+      header.append(title, targetToggle, closeBtn);
       body = el("div", "body");
       panel.append(header, body);
       root.appendChild(panel);
@@ -1747,7 +1833,21 @@ img.shot {
       pickHint.textContent = "\u041A\u043B\u0438\u043A\u043D\u0438 \u043F\u043E \u044D\u043B\u0435\u043C\u0435\u043D\u0442\u0443 \xB7 Esc \u2014 \u0437\u0430\u043A\u0440\u044B\u0442\u044C";
       box = el("div", "box hidden");
       tip = el("div", "tip hidden");
-      root.append(pickHint, box, tip);
+      targetBtn = el("button", "target-btn hidden");
+      targetBtn.innerHTML = targetIcon(20);
+      targetBtn.title = "\u041F\u041A\u041C \u0434\u043B\u044F \u043F\u0435\u0440\u0435\u043C\u0435\u0449\u0435\u043D\u0438\u044F";
+      root.append(pickHint, box, tip, targetBtn);
+      targetEnabled = loadTargetEnabled();
+      targetPosition = (_a2 = loadTargetPosition()) != null ? _a2 : DEFAULT_TARGET_POSITION;
+      targetToggle.classList.toggle("active", targetEnabled);
+      targetBtn.classList.toggle("hidden", !targetEnabled);
+      applyTargetButtonPosition();
+      targetBtn.addEventListener("click", () => {
+        if (open) close();
+        else openModal();
+      });
+      targetBtn.addEventListener("mousedown", onTargetDragStart);
+      win.addEventListener("resize", applyTargetButtonPosition);
       header.addEventListener("mousedown", onDragStart);
       win.addEventListener("beforeunload", cancelPick);
     }
@@ -1860,8 +1960,8 @@ img.shot {
       doc.removeEventListener("keydown", onKey, true);
     }
     function onDragStart(ev) {
-      var _a2;
-      if ((_a2 = ev.target.classList) == null ? void 0 : _a2.contains("close")) return;
+      const cls = ev.target.classList;
+      if ((cls == null ? void 0 : cls.contains("close")) || (cls == null ? void 0 : cls.contains("target-toggle"))) return;
       const r = panel.getBoundingClientRect();
       dragOffset = { dx: ev.clientX - r.left, dy: ev.clientY - r.top };
       win.addEventListener("mousemove", onDragMove);
@@ -1869,8 +1969,12 @@ img.shot {
     }
     function onDragMove(ev) {
       if (!dragOffset) return;
-      panel.style.left = ev.clientX - dragOffset.dx + "px";
-      panel.style.top = ev.clientY - dragOffset.dy + "px";
+      const clamped = clampPanelPosition(
+        ev.clientX - dragOffset.dx,
+        ev.clientY - dragOffset.dy
+      );
+      panel.style.left = clamped.x + "px";
+      panel.style.top = clamped.y + "px";
     }
     function onDragEnd() {
       if (!dragOffset) return;
@@ -1881,6 +1985,77 @@ img.shot {
         x: parseFloat(panel.style.left) || 0,
         y: parseFloat(panel.style.top) || 0
       });
+    }
+    function setTargetEnabled(enabled) {
+      targetEnabled = enabled;
+      saveTargetEnabled(enabled);
+      targetToggle.classList.toggle("active", enabled);
+      targetBtn.classList.toggle("hidden", !enabled);
+    }
+    function applyTargetButtonPosition() {
+      targetBtn.classList.remove(
+        "edge-top",
+        "edge-right",
+        "edge-bottom",
+        "edge-left"
+      );
+      targetBtn.classList.add(`edge-${targetPosition.edge}`);
+      const offset = clampOffset(targetPosition.edge, targetPosition.offset);
+      const offsetPct = `${offset * 100}%`;
+      const half = EDGE_BUTTON_SIZE / 2;
+      targetBtn.style.left = "";
+      targetBtn.style.top = "";
+      if (targetPosition.edge === "top" || targetPosition.edge === "bottom") {
+        targetBtn.style.left = `calc(${offsetPct} - ${half}px)`;
+      } else {
+        targetBtn.style.top = `calc(${offsetPct} - ${half}px)`;
+      }
+    }
+    function clampOffset(edge, value) {
+      const length = edge === "top" || edge === "bottom" ? win.innerWidth : win.innerHeight;
+      const half = EDGE_BUTTON_SIZE / 2;
+      if (!(length > 0)) return Math.min(1, Math.max(0, value));
+      const min = Math.min(0.5, half / length);
+      const max = Math.max(0.5, 1 - half / length);
+      return Math.min(max, Math.max(min, value));
+    }
+    function edgeFromPoint(x, y) {
+      const distances = [
+        ["left", x],
+        ["right", win.innerWidth - x],
+        ["top", y],
+        ["bottom", win.innerHeight - y]
+      ];
+      distances.sort((a, b) => a[1] - b[1]);
+      return distances[0][0];
+    }
+    function suppressContextMenu(ev) {
+      ev.preventDefault();
+    }
+    function onTargetDragStart(ev) {
+      if (ev.button !== 2) return;
+      ev.preventDefault();
+      targetDragging = true;
+      win.addEventListener("mousemove", onTargetDragMove);
+      win.addEventListener("mouseup", onTargetDragEnd);
+      win.addEventListener("contextmenu", suppressContextMenu, true);
+    }
+    function onTargetDragMove(ev) {
+      if (!targetDragging) return;
+      const edge = edgeFromPoint(ev.clientX, ev.clientY);
+      const raw = edge === "top" || edge === "bottom" ? ev.clientX / win.innerWidth : ev.clientY / win.innerHeight;
+      targetPosition = { edge, offset: clampOffset(edge, raw) };
+      applyTargetButtonPosition();
+    }
+    function onTargetDragEnd() {
+      if (!targetDragging) return;
+      targetDragging = false;
+      win.removeEventListener("mousemove", onTargetDragMove);
+      win.removeEventListener("mouseup", onTargetDragEnd);
+      saveTargetPosition(targetPosition);
+      setTimeout(() => {
+        win.removeEventListener("contextmenu", suppressContextMenu, true);
+      }, 0);
     }
     function openModal() {
       ensureMounted();
@@ -1903,9 +2078,18 @@ img.shot {
       open: openModal,
       close,
       isOpen: () => open,
+      mount: ensureMounted,
       destroy: () => {
         cancelPick();
         win.removeEventListener("beforeunload", cancelPick);
+        win.removeEventListener("mousemove", onDragMove);
+        win.removeEventListener("mouseup", onDragEnd);
+        win.removeEventListener("mousemove", onTargetDragMove);
+        win.removeEventListener("mouseup", onTargetDragEnd);
+        win.removeEventListener("contextmenu", suppressContextMenu, true);
+        win.removeEventListener("resize", applyTargetButtonPosition);
+        dragOffset = null;
+        targetDragging = false;
         if (host && host.parentNode) host.parentNode.removeChild(host);
         host = null;
         open = false;
@@ -1922,6 +2106,7 @@ img.shot {
     const cfg = (_a2 = window.__PICK_ELEMENT_CFG__) != null ? _a2 : {};
     const hotkey = (_b = cfg.hotkey) != null ? _b : "KeyC";
     const overlay = createOverlay();
+    overlay.mount();
     window.addEventListener(
       "keydown",
       (e) => {

@@ -243,6 +243,132 @@ try {
       assert.notEqual(left, "");
     },
   );
+
+  await check(
+    "edge:boundary — dragging the panel past the top/left edge clamps it inside the viewport",
+    async () => {
+      const header = page.locator("#__pick_element_root >> css=.header");
+      const box = await header.boundingBox();
+      await page.mouse.move(box.x + 10, box.y + 10);
+      await page.mouse.down();
+      await page.mouse.move(-500, -500);
+      await page.mouse.up();
+      const left = await panel.evaluate((elm) => parseFloat(elm.style.left));
+      const top = await panel.evaluate((elm) => parseFloat(elm.style.top));
+      assert.ok(left >= 0, `left should clamp to >= 0, got ${left}`);
+      assert.ok(top >= 0, `top should clamp to >= 0, got ${top}`);
+    },
+  );
+
+  await check(
+    "edge:boundary — dragging the panel past the bottom edge only clamps the header, not the whole panel, off-screen",
+    async () => {
+      const header = page.locator("#__pick_element_root >> css=.header");
+      const box = await header.boundingBox();
+      const viewport = page.viewportSize();
+      await page.mouse.move(box.x + 10, box.y + 10);
+      await page.mouse.down();
+      await page.mouse.move(box.x + 10, viewport.height + 500);
+      await page.mouse.up();
+      const top = await panel.evaluate((elm) => parseFloat(elm.style.top));
+      const headerHeight = await header.evaluate((elm) => elm.offsetHeight);
+      assert.ok(
+        top + headerHeight <= viewport.height + 1,
+        `header should stay within the viewport, got top=${top} headerHeight=${headerHeight} viewportHeight=${viewport.height}`,
+      );
+      await page.keyboard.press("Escape");
+    },
+  );
+
+  await check(
+    "hovering the screenshot highlights its border like the path text does",
+    async () => {
+      await page.evaluate(() => localStorage.removeItem("pick-element:pos"));
+      await page.keyboard.down("Alt");
+      await page.keyboard.press("KeyC");
+      await page.keyboard.up("Alt");
+      await panel.waitFor({ state: "visible", timeout: 2000 });
+      await page.locator('button:has-text("count is")').click();
+      await img.waitFor({ state: "visible", timeout: 5000 });
+      const before = await img.evaluate(
+        (elm) => getComputedStyle(elm).borderColor,
+      );
+      await img.hover();
+      const after = await img.evaluate(
+        (elm) => getComputedStyle(elm).borderColor,
+      );
+      assert.notEqual(after, before);
+      await page.keyboard.press("Escape");
+    },
+  );
+
+  const targetToggle = page.locator(
+    "#__pick_element_root >> css=.target-toggle",
+  );
+  const targetBtn = page.locator("#__pick_element_root >> css=.target-btn");
+
+  await check(
+    "the edge target button is hidden until enabled via the header toggle",
+    async () => {
+      await page.keyboard.down("Alt");
+      await page.keyboard.press("KeyC");
+      await page.keyboard.up("Alt");
+      await panel.waitFor({ state: "visible", timeout: 2000 });
+      await assert.rejects(
+        targetBtn.waitFor({ state: "visible", timeout: 500 }),
+      );
+      await targetToggle.click();
+      await targetBtn.waitFor({ state: "visible", timeout: 2000 });
+      const title = await targetBtn.getAttribute("title");
+      assert.equal(title, "ПКМ для перемещения");
+    },
+  );
+
+  await check(
+    "clicking the edge target button toggles the panel closed and open",
+    async () => {
+      await targetBtn.click();
+      await panel.waitFor({ state: "hidden", timeout: 2000 });
+      await targetBtn.click();
+      await panel.waitFor({ state: "visible", timeout: 2000 });
+    },
+  );
+
+  await check(
+    "edge:browser/UX — right-click-dragging the target button moves it along the viewport perimeter and persists",
+    async () => {
+      const box = await targetBtn.boundingBox();
+      const viewport = page.viewportSize();
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down({ button: "right" });
+      await page.mouse.move(viewport.width / 2, 10);
+      await page.mouse.up({ button: "right" });
+      const stored = await page.evaluate(() =>
+        localStorage.getItem("pick-element:target-pos"),
+      );
+      assert.ok(stored, "target position should be saved to localStorage");
+      const parsed = JSON.parse(stored);
+      assert.equal(parsed.edge, "top");
+
+      await page.reload({ waitUntil: "networkidle" });
+      await targetBtn.waitFor({ state: "visible", timeout: 2000 });
+      const classes = await targetBtn.getAttribute("class");
+      assert.match(classes ?? "", /edge-top/);
+    },
+  );
+
+  await check(
+    "closing the panel with × keeps the edge target button visible",
+    async () => {
+      await page.keyboard.down("Alt");
+      await page.keyboard.press("KeyC");
+      await page.keyboard.up("Alt");
+      await panel.waitFor({ state: "visible", timeout: 2000 });
+      await page.locator("#__pick_element_root >> css=.close").click();
+      await panel.waitFor({ state: "hidden", timeout: 2000 });
+      await targetBtn.waitFor({ state: "visible", timeout: 2000 });
+    },
+  );
 } finally {
   await browser.close();
 }

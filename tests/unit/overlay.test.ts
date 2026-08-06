@@ -235,4 +235,165 @@ describe("overlay", () => {
     o.destroy();
     expect(document.getElementById(HOST_ID)).toBeNull();
   });
+
+  function drag(
+    handle: HTMLElement,
+    from: [number, number],
+    to: [number, number],
+  ) {
+    handle.dispatchEvent(
+      new MouseEvent("mousedown", {
+        bubbles: true,
+        clientX: from[0],
+        clientY: from[1],
+      }),
+    );
+    window.dispatchEvent(
+      new MouseEvent("mousemove", { clientX: to[0], clientY: to[1] }),
+    );
+    window.dispatchEvent(new MouseEvent("mouseup"));
+  }
+
+  it("mount() shows the enabled edge target button without opening the panel", () => {
+    const o1 = createOverlay();
+    o1.open();
+    (shadow().querySelector(".target-toggle") as HTMLElement).click();
+    o1.destroy();
+
+    const o2 = createOverlay();
+    o2.mount();
+    expect(o2.isOpen()).toBe(false);
+    expect(panel().classList.contains("hidden")).toBe(true);
+    expect(
+      (shadow().querySelector(".target-btn") as HTMLElement).classList.contains(
+        "hidden",
+      ),
+    ).toBe(false);
+    o2.destroy();
+  });
+
+  it("edge:boundary — dragging the panel past the top-left clamps it to (0,0)", () => {
+    const o = createOverlay();
+    o.open();
+    const header = shadow().querySelector(".header") as HTMLElement;
+    drag(header, [20, 20], [-500, -500]);
+    expect(parseFloat(panel().style.left)).toBe(0);
+    expect(parseFloat(panel().style.top)).toBe(0);
+    o.destroy();
+  });
+
+  it("edge:boundary — dragging the panel past the bottom only clamps the header inside the viewport", () => {
+    const o = createOverlay();
+    o.open();
+    const header = shadow().querySelector(".header") as HTMLElement;
+    drag(header, [20, 20], [20, 5000]);
+    const headerHeight = header.offsetHeight;
+    const top = parseFloat(panel().style.top);
+    expect(top + headerHeight).toBeLessThanOrEqual(window.innerHeight);
+    o.destroy();
+  });
+
+  function targetToggle() {
+    return shadow().querySelector(".target-toggle") as HTMLElement;
+  }
+  function targetBtn() {
+    return shadow().querySelector(".target-btn") as HTMLElement;
+  }
+
+  it("the edge target button is hidden until the header toggle enables it", () => {
+    const o = createOverlay();
+    o.open();
+    expect(targetBtn().classList.contains("hidden")).toBe(true);
+    targetToggle().click();
+    expect(targetBtn().classList.contains("hidden")).toBe(false);
+    expect(targetToggle().classList.contains("active")).toBe(true);
+    expect(targetBtn().title).toBe("ПКМ для перемещения");
+    o.destroy();
+  });
+
+  it("enabling the target button persists across a fresh overlay instance", () => {
+    const o1 = createOverlay();
+    o1.open();
+    targetToggle().click();
+    o1.destroy();
+
+    const o2 = createOverlay();
+    o2.open();
+    expect(targetBtn().classList.contains("hidden")).toBe(false);
+    o2.destroy();
+  });
+
+  it("clicking the edge target button toggles the panel closed and open", () => {
+    const o = createOverlay();
+    o.open();
+    targetToggle().click();
+    targetBtn().dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(o.isOpen()).toBe(false);
+    targetBtn().dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(o.isOpen()).toBe(true);
+    o.destroy();
+  });
+
+  it("closing the panel with × keeps the enabled edge target button visible", () => {
+    const o = createOverlay();
+    o.open();
+    targetToggle().click();
+    (shadow().querySelector(".close") as HTMLElement).click();
+    expect(o.isOpen()).toBe(false);
+    expect(targetBtn().classList.contains("hidden")).toBe(false);
+    o.destroy();
+  });
+
+  it("right-click-dragging the target button moves it along the viewport perimeter and persists (edge:browser/UX)", () => {
+    const o = createOverlay();
+    o.open();
+    targetToggle().click();
+    const btn = targetBtn();
+    btn.dispatchEvent(
+      new MouseEvent("mousedown", {
+        bubbles: true,
+        button: 2,
+        clientX: 1024,
+        clientY: 384,
+      }),
+    );
+    window.dispatchEvent(
+      new MouseEvent("mousemove", { clientX: 512, clientY: 0 }),
+    );
+    window.dispatchEvent(new MouseEvent("mouseup", { button: 2 }));
+    expect(btn.classList.contains("edge-top")).toBe(true);
+    const stored = JSON.parse(localStorage.getItem("pick-element:target-pos")!);
+    expect(stored.edge).toBe("top");
+    o.destroy();
+  });
+
+  it("a left-click mousedown on the target button does not start a right-drag reposition (malformed-input guard)", () => {
+    const o = createOverlay();
+    o.open();
+    targetToggle().click();
+    const btn = targetBtn();
+    btn.dispatchEvent(
+      new MouseEvent("mousedown", {
+        bubbles: true,
+        button: 0,
+        clientX: 1024,
+        clientY: 384,
+      }),
+    );
+    window.dispatchEvent(
+      new MouseEvent("mousemove", { clientX: 512, clientY: 0 }),
+    );
+    window.dispatchEvent(new MouseEvent("mouseup"));
+    expect(localStorage.getItem("pick-element:target-pos")).toBeNull();
+    o.destroy();
+  });
+
+  it("mousedown on the header target toggle does not start dragging the panel", () => {
+    const o = createOverlay();
+    o.open();
+    const before = panel().style.left;
+    drag(targetToggle(), [20, 20], [200, 200]);
+    expect(panel().style.left).toBe(before);
+    o.destroy();
+  });
 });

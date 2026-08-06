@@ -39,8 +39,14 @@ the picker (default `KeyC`, i.e. **Alt+C**).
 4. Click the path text to copy it, or the screenshot to copy the PNG — either shows "Скопировано"
    next to what you clicked.
 5. Click a different element while the panel is open to replace the selection. Drag the panel by
-   its header to reposition it — the position is remembered (`localStorage`) across reloads.
+   its header to reposition it — the position is remembered (`localStorage`) across reloads. The
+   panel is clamped to the viewport: it can't be dragged past the top/left/right edges, and at the
+   bottom only the header has to stay on-screen (the body may extend past the fold).
 6. Close with the **×** button or **Escape**.
+7. The icon button next to **×** toggles an edge-docked quick-access button (off by default). Once
+   enabled it's always on screen, flush against a viewport edge (right side, vertically centered,
+   by default) — click it to open/close the panel, right-click-drag it along the viewport perimeter
+   to reposition. Both the enabled state and position are remembered across reloads.
 
 The plugin is disabled for production builds (`vite build`) — nothing it injects ships to users.
 
