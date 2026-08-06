@@ -46,6 +46,15 @@ The one-time install cost happens only on the first session after enable; later 
 
 See `docs/superpowers/specs/2026-06-26-vite-plugin-claude-feedback-design.md` for the full design, the context payload shape, and the MCP tool list.
 
+### Known limitation: HMR on every save
+
+The plugin stamps a `data-src-loc` attribute into each `.vue` file's template source before
+`@vitejs/plugin-vue` compiles it (see `docs/superpowers/specs/2026-08-06-element-source-location-design.md`).
+Vite's own hot-update path re-reads the file straight from disk and diffs it against the
+previously compiled (already-stamped) version, so it always sees the template as "changed" —
+every save re-renders the component, even when you only touched `<script>`/`<style>`. This is a
+dev-only cosmetic trade-off, not a functional bug.
+
 ## Development
 
 ```

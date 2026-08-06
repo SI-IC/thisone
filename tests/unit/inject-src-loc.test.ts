@@ -77,4 +77,35 @@ describe("injectSourceLocations", () => {
     const src = "\0\0not even close to a vue file <<<>>>";
     expect(injectSourceLocations(src, FILE)).toBe(src);
   });
+
+  it("skips custom component tags but still injects their element children", () => {
+    const src =
+      `<template>\n` + `  <MyButton><span>x</span></MyButton>\n` + `</template>\n`;
+    const out = injectSourceLocations(src, FILE);
+    expect(out).not.toMatch(/<MyButton data-src-loc/);
+    expect(attrOf(out, "span")).toBe(`${FILE}:2:13-2:27`);
+  });
+
+  it("HTML-escapes special characters in the file path (hostile input)", () => {
+    const src = `<template>\n  <div>hi</div>\n</template>\n`;
+    const hostileFile = `/tmp/x.vue" data-evil="1"><img src=x onerror=alert(1)>`;
+    const out = injectSourceLocations(src, hostileFile);
+    expect(out).toContain(
+      'data-src-loc="/tmp/x.vue&quot; data-evil=&quot;1&quot;&gt;&lt;img src=x onerror=alert(1)&gt;:2:3-2:16"',
+    );
+    expect(out).not.toContain("<img src=x onerror=alert(1)>");
+  });
+
+  it("computes correct offsets when <script setup> precedes <template>", () => {
+    const src =
+      `<script setup>\n` +
+      `const x = 1;\n` +
+      `</script>\n` +
+      `\n` +
+      `<template>\n` +
+      `  <div>{{ x }}</div>\n` +
+      `</template>\n`;
+    const out = injectSourceLocations(src, FILE);
+    expect(attrOf(out, "div")).toBe(`${FILE}:6:3-6:21`);
+  });
 });

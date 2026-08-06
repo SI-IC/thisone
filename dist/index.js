@@ -4041,13 +4041,16 @@ import {
   NodeTypes,
   ElementTypes
 } from "@vue/compiler-core";
+function escapeAttr(value) {
+  return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 function collectInsertions(nodes, file, out) {
   for (const node of nodes) {
     switch (node.type) {
       case NodeTypes.ELEMENT: {
-        if (node.tagType !== ElementTypes.TEMPLATE) {
+        if (node.tagType === ElementTypes.ELEMENT) {
           const { start, end } = node.loc;
-          const value = `${file}:${start.line}:${start.column}-${end.line}:${end.column}`;
+          const value = `${escapeAttr(file)}:${start.line}:${start.column}-${end.line}:${end.column}`;
           out.push({
             offset: start.offset + 1 + node.tag.length,
             text: ` data-src-loc="${value}"`
@@ -4084,12 +4087,15 @@ function injectSourceLocations(source, file) {
     return source;
   }
   if (insertions.length === 0) return source;
-  insertions.sort((a, b) => b.offset - a.offset);
-  let result = source;
+  insertions.sort((a, b) => a.offset - b.offset);
+  const parts = [];
+  let cursor = 0;
   for (const ins of insertions) {
-    result = result.slice(0, ins.offset) + ins.text + result.slice(ins.offset);
+    parts.push(source.slice(cursor, ins.offset), ins.text);
+    cursor = ins.offset;
   }
-  return result;
+  parts.push(source.slice(cursor));
+  return parts.join("");
 }
 
 // src/plugin/index.ts

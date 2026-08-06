@@ -143,6 +143,9 @@ try {
     assert.equal(item.element.tag, "button");
     assert.equal(item.component.name, "Counter");
     assert.match(item.component.file ?? "", /Counter\.vue/);
+    assert.match(item.element.sourceLoc?.file ?? "", /Counter\.vue/);
+    assert.equal(item.element.sourceLoc.startLine, 8);
+    assert.equal(item.element.sourceLoc.endLine, 10);
     assert.ok(Array.isArray(item.console));
     assert.ok(item.console.length > 0, "console buffer should be non-empty");
   });
