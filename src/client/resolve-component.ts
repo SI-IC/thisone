@@ -3,6 +3,8 @@
 // (`el.__vueParentComponent`, `type.__file`) and degrades to null/anonymous when
 // they are absent (element outside the app, production build without `__file`).
 
+import { baseName } from "./base-name";
+
 export interface SourceLocation {
   file: string;
   startLine: number;
@@ -26,13 +28,6 @@ export interface ComponentDescriptor {
 }
 
 export type ResolvedComponent = ComponentDescriptor;
-
-/** Strip directory and extension: `/src/components/Counter.vue` -> `Counter`. */
-function baseName(file: string): string {
-  const noQuery = file.split(/[?#]/)[0];
-  const last = noQuery.split(/[\\/]/).pop() || noQuery;
-  return last.replace(/\.\w+$/, "");
-}
 
 /** Best name for a Vue ComponentInternalInstance: name -> __name -> file base. */
 export function componentName(instance: any): string {

@@ -1,11 +1,13 @@
 "use strict";
 (() => {
-  // src/client/resolve-component.ts
+  // src/client/base-name.ts
   function baseName(file) {
     const noQuery = file.split(/[?#]/)[0];
     const last = noQuery.split(/[\\/]/).pop() || noQuery;
     return last.replace(/\.\w+$/, "");
   }
+
+  // src/client/resolve-component.ts
   function componentName(instance) {
     var _a2;
     const type = (_a2 = instance == null ? void 0 : instance.type) != null ? _a2 : {};
