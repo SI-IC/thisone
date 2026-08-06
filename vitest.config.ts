@@ -4,4 +4,13 @@ export default defineConfig({
   esbuild: {
     jsx: "automatic",
   },
+  test: {
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/.git/**",
+      "**/.claude/**",
+      "**/.pnpm-store/**",
+    ],
+  },
 });
