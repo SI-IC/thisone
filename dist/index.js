@@ -1,5 +1,3 @@
-import { createRequire as __cr } from 'module'; const require = __cr(import.meta.url);
-
 // src/plugin/index.ts
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";

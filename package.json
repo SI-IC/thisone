@@ -1,7 +1,7 @@
 {
-  "name": "vite-plugin-claude-feedback",
+  "name": "vite-plugin-pick-element",
   "version": "0.0.19",
-  "description": "Send element-anchored feedback from a Vue+Vite dev preview to Claude Code (Alt+C).",
+  "description": "Pick a DOM element in a Vue+Vite dev preview (Alt+C) and copy its component path or a screenshot to the clipboard.",
   "type": "module",
   "license": "MIT",
   "author": "SI-IC",
@@ -19,14 +19,12 @@
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
-    "src",
-    "claude-plugin"
+    "src"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "vitest",
     "test:run": "vitest run --passWithNoTests",
-    "check:versions": "node scripts/check-versions.mjs",
     "release": "node scripts/release.mjs",
     "prepare": "husky"
   },
@@ -47,7 +45,6 @@
   },
   "packageManager": "pnpm@10.33.0",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.29.0",
     "@vue/compiler-core": "^3.5.41",
     "@vue/compiler-sfc": "^3.5.41",
     "modern-screenshot": "^4.7.0"

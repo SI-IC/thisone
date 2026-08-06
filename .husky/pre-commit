@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
-# Auto-versioning: when plugin code (src/ or claude-plugin/) is staged, bump the
-# patch version once per commit, sync the manifests, rebuild dist/, and stage it
-# all. The hook only STAGES — it never commits — so it cannot loop.
 set -e
 
 staged="$(git diff --cached --name-only)"
-if ! printf '%s\n' "$staged" | grep -qE '^(src/|claude-plugin/)'; then
+if ! printf '%s\n' "$staged" | grep -qE '^src/'; then
   exit 0
 fi
 
@@ -13,13 +10,9 @@ head_ver="$(git show HEAD:package.json 2>/dev/null | node -e 'let s="";process.s
 work_ver="$(node -p "require('./package.json').version")"
 
 if [ "$head_ver" = "$work_ver" ]; then
-  # Version not yet bumped in this commit -> bump patch (also syncs manifests).
   node scripts/release.mjs patch
-else
-  # Already bumped (e.g. a manual `pnpm release minor` staged) -> just sync.
-  node scripts/version-sync.mjs
 fi
 
 pnpm build
 
-git add dist package.json claude-plugin/.claude-plugin/plugin.json .claude-plugin/marketplace.json
+git add dist package.json

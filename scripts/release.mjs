@@ -1,10 +1,11 @@
 #!/usr/bin/env node
-// Bump the root package.json version (patch|minor|major) and sync the manifests.
-// Usage: node scripts/release.mjs <patch|minor|major>
-// Self-contained semver bump — no external dependency.
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { PATHS, syncVersions } from "./version-sync.mjs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const PKG_PATH = resolve(ROOT, "package.json");
 
 const LEVELS = new Set(["patch", "minor", "major"]);
 const level = process.argv[2];
@@ -28,10 +29,8 @@ function bump(version, kind) {
   return `${major}.${minor}.${patch}`;
 }
 
-const pkg = JSON.parse(readFileSync(PATHS.pkg, "utf8"));
+const pkg = JSON.parse(readFileSync(PKG_PATH, "utf8"));
 const next = bump(pkg.version, level);
 pkg.version = next;
-writeFileSync(PATHS.pkg, JSON.stringify(pkg, null, 2) + "\n");
-
-syncVersions();
+writeFileSync(PKG_PATH, JSON.stringify(pkg, null, 2) + "\n");
 console.log(`release: bumped to ${next} (${level})`);
