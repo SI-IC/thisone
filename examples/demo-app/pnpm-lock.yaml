@@ -21,7 +21,7 @@ importers:
       vite:
         specifier: 8.2.0
         version: 8.2.0
-      vite-plugin-claude-feedback:
+      vite-plugin-pick-element:
         specifier: link:../..
         version: link:../..
 
