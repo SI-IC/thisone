@@ -1,5 +1,6 @@
 node_modules/
 .claude-feedback/
+.pnpm-store/
 *.log
 
 # NOTE: dist/ is intentionally committed (github-install needs no build toolchain).
