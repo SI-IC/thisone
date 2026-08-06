@@ -320,7 +320,7 @@ try {
       await targetToggle.click();
       await targetBtn.waitFor({ state: "visible", timeout: 2000 });
       const title = await targetBtn.getAttribute("title");
-      assert.equal(title, "ПКМ для перемещения");
+      assert.equal(title, "Right-click drag to move");
     },
   );
 

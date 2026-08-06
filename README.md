@@ -32,11 +32,11 @@ the picker (default `KeyC`, i.e. **Alt+C**).
 ## Usage
 
 1. Run your Vue+Vite dev server and open the preview.
-2. Press **Alt+C** — a small panel opens: "Выберите элемент".
+2. Press **Alt+C** — a small panel opens: "Select an element".
 3. Click any element on the page. The panel shows its path (tag, Vue component name, and the
    source file:line:col-line:col when resolvable) and a screenshot of the element with 30px of
    real surrounding page content padded on each side.
-4. Click the path text to copy it, or the screenshot to copy the PNG — either shows "Скопировано"
+4. Click the path text to copy it, or the screenshot to copy the PNG — either shows "Copied"
    next to what you clicked.
 5. Click a different element while the panel is open to replace the selection. Drag the panel by
    its header to reposition it — the position is remembered (`localStorage`) across reloads. The

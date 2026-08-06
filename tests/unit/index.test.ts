@@ -1,4 +1,4 @@
-// Не менять, потому что без @vitest-environment happy-dom здесь используется node-окружение и window/document отсутствуют
+// Do not change, because without @vitest-environment happy-dom this file runs in a node environment with no window/document
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HOST_ID } from "../../src/client/overlay";
 

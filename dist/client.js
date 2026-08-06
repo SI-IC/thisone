@@ -1571,7 +1571,7 @@
     const full = await domToCanvas(document.documentElement, {
       width: window.innerWidth,
       height: window.innerHeight,
-      // Не менять, потому что restoreScrollPosition:false рассинхронит canvas с getBoundingClientRect() при scroll
+      // Do not change, because restoreScrollPosition:false desyncs the canvas from getBoundingClientRect() on scroll
       features: { restoreScrollPosition: true },
       filter: excludeRoot ? (node) => node !== excludeRoot : void 0
     });
@@ -1689,6 +1689,7 @@
   padding: 8px 10px; cursor: move; background: #181825; user-select: none;
 }
 .title { font-weight: 600; font-size: 13px; }
+.actions { display: flex; align-items: center; gap: 6px; }
 .close {
   cursor: pointer; border: none; background: transparent; color: #a6adc8;
   font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 4px;
@@ -1698,6 +1699,7 @@
   cursor: pointer; border: 1px solid #585b70; background: #11111b; color: #a6adc8;
   padding: 2px 6px; border-radius: 4px; display: flex; align-items: center;
 }
+.target-toggle svg { transform: rotate(-45deg); }
 .target-toggle:hover { background: #313244; color: #eee; border-color: #89b4fa; }
 .target-toggle.active { color: #89b4fa; border-color: #89b4fa; background: rgba(137,180,250,.12); }
 .target-toggle.active:hover { background: #313244; }
@@ -1741,6 +1743,9 @@ img.shot:hover { border-color: #89b4fa; }
   padding: 2px 6px; border-radius: 4px; font-size: 11px; white-space: nowrap;
 }
 `;
+  function pinIcon(size) {
+    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>`;
+  }
   function targetIcon(size) {
     return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>`;
   }
@@ -1815,10 +1820,10 @@ img.shot:hover { border-color: #89b4fa; }
       panel = el("div", "panel hidden");
       header = el("div", "header");
       const title = el("span", "title");
-      title.textContent = "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u044D\u043B\u0435\u043C\u0435\u043D\u0442";
+      title.textContent = "Select an element";
       targetToggle = el("button", "target-toggle");
-      targetToggle.innerHTML = targetIcon(14);
-      targetToggle.title = "\u041F\u043E\u043A\u0430\u0437\u044B\u0432\u0430\u0442\u044C \u043A\u043D\u043E\u043F\u043A\u0443 \u0431\u044B\u0441\u0442\u0440\u043E\u0433\u043E \u0434\u043E\u0441\u0442\u0443\u043F\u0430 \u0443 \u043A\u0440\u0430\u044F \u044D\u043A\u0440\u0430\u043D\u0430";
+      targetToggle.innerHTML = pinIcon(14);
+      targetToggle.title = "Show quick-access button at the screen edge";
       targetToggle.addEventListener(
         "click",
         () => setTargetEnabled(!targetEnabled)
@@ -1826,17 +1831,19 @@ img.shot:hover { border-color: #89b4fa; }
       const closeBtn = el("button", "close");
       closeBtn.textContent = "\xD7";
       closeBtn.addEventListener("click", () => close());
-      header.append(title, targetToggle, closeBtn);
+      const actions = el("div", "actions");
+      actions.append(targetToggle, closeBtn);
+      header.append(title, actions);
       body = el("div", "body");
       panel.append(header, body);
       root.appendChild(panel);
       pickHint = el("div", "pickhint hidden");
-      pickHint.textContent = "\u041A\u043B\u0438\u043A\u043D\u0438 \u043F\u043E \u044D\u043B\u0435\u043C\u0435\u043D\u0442\u0443 \xB7 Esc \u2014 \u0437\u0430\u043A\u0440\u044B\u0442\u044C";
+      pickHint.textContent = "Click an element \xB7 Esc to close";
       box = el("div", "box hidden");
       tip = el("div", "tip hidden");
       targetBtn = el("button", "target-btn hidden");
       targetBtn.innerHTML = targetIcon(20);
-      targetBtn.title = "\u041F\u041A\u041C \u0434\u043B\u044F \u043F\u0435\u0440\u0435\u043C\u0435\u0449\u0435\u043D\u0438\u044F";
+      targetBtn.title = "Right-click drag to move";
       root.append(pickHint, box, tip, targetBtn);
       targetEnabled = loadTargetEnabled();
       targetPosition = (_a2 = loadTargetPosition()) != null ? _a2 : DEFAULT_TARGET_POSITION;
@@ -1855,11 +1862,11 @@ img.shot:hover { border-color: #89b4fa; }
     function renderEmpty() {
       body.innerHTML = "";
       const hint = el("div", "hint");
-      hint.textContent = "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u044D\u043B\u0435\u043C\u0435\u043D\u0442";
+      hint.textContent = "Select an element";
       body.appendChild(hint);
     }
     function showStatus(target, ok) {
-      target.textContent = ok ? "\u0421\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u043D\u043E" : "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u0442\u044C";
+      target.textContent = ok ? "Copied" : "Copy failed";
       target.classList.toggle("fail", !ok);
       if (statusTimer) clearTimeout(statusTimer);
       statusTimer = setTimeout(() => {
@@ -1893,7 +1900,7 @@ img.shot:hover { border-color: #89b4fa; }
         body.append(img, imgStatus);
       }).catch(() => {
         if (myPickId !== pickId) return;
-        imgStatus.textContent = "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u0434\u0435\u043B\u0430\u0442\u044C \u0441\u043A\u0440\u0438\u043D\u0448\u043E\u0442";
+        imgStatus.textContent = "Screenshot failed";
         imgStatus.classList.add("fail");
         body.append(imgStatus);
       });

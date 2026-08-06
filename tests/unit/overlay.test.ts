@@ -54,7 +54,7 @@ describe("overlay", () => {
     const o = createOverlay();
     o.open();
     expect(shadow().querySelector(".hint")?.textContent).toMatch(
-      /выберите элемент/i,
+      /select an element/i,
     );
     o.destroy();
   });
@@ -109,7 +109,7 @@ describe("overlay", () => {
     );
     await tick();
     expect(shadow().querySelector(".path + .status")?.textContent).toBe(
-      "Скопировано",
+      "Copied",
     );
     o.destroy();
   });
@@ -130,7 +130,7 @@ describe("overlay", () => {
     );
     await tick();
     expect(shadow().querySelector(".path + .status")?.textContent).toBe(
-      "Не удалось скопировать",
+      "Copy failed",
     );
     o.destroy();
   });
@@ -151,7 +151,7 @@ describe("overlay", () => {
     );
     await tick();
     expect(shadow().querySelector("img.shot + .status")?.textContent).toBe(
-      "Скопировано",
+      "Copied",
     );
     o.destroy();
   });
@@ -307,7 +307,7 @@ describe("overlay", () => {
     targetToggle().click();
     expect(targetBtn().classList.contains("hidden")).toBe(false);
     expect(targetToggle().classList.contains("active")).toBe(true);
-    expect(targetBtn().title).toBe("ПКМ для перемещения");
+    expect(targetBtn().title).toBe("Right-click drag to move");
     o.destroy();
   });
 

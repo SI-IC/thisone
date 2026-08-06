@@ -16,7 +16,7 @@ Package renamed to **`vite-plugin-pick-element`**.
 
 **In scope:**
 
-- Alt+C opens a small draggable window: "Выберите элемент".
+- Alt+C opens a small draggable window: "Select an element".
 - Hover/click picks a DOM element (reuse existing pick-mode highlight/hint
   from the current overlay).
 - On pick, the window shows, stacked vertically:
@@ -25,7 +25,7 @@ Package renamed to **`vite-plugin-pick-element`**.
      padded on each side.
 - Clicking the text copies it (`navigator.clipboard.writeText`); clicking the
   image copies the PNG (`navigator.clipboard.write` + `ClipboardItem`). Each
-  shows a transient "Скопировано" / "Не удалось скопировать" near the click.
+  shows a transient "Copied" / "Failed to copy" near the click.
 - While the window is open, clicking a different element on the page replaces
   the current selection and re-renders both parts.
 - Closing via the × button or `Escape`.
@@ -58,7 +58,7 @@ Kept as-is: `src/client/resolve-component.ts` (`describeElement`,
 
 ## Data flow
 
-1. **Alt+C** → `openModal()` shows the window with "Выберите элемент" and
+1. **Alt+C** → `openModal()` shows the window with "Select an element" and
    immediately enters pick mode (existing `pickHint`/`box`/`tip` highlight).
 2. **Click an element on the page** → `selectedEl` updates → panel re-renders:
    - path text from `describeElement()` + `resolveComponent()`, formatted as
@@ -74,7 +74,7 @@ Kept as-is: `src/client/resolve-component.ts` (`describeElement`,
    `URL.createObjectURL` for the `<img src>`.
 4. **Copy**: click on the path text → `navigator.clipboard.writeText(text)`.
    Click on the image → `navigator.clipboard.write([new ClipboardItem({
-'image/png': blob })])`. Success shows "Скопировано" for ~1.5s next to the
+'image/png': blob })])`. Success shows "Copied" for ~1.5s next to the
    clicked element.
 5. **Close**: × button or `Escape` → `close()`, cancels pick mode. Nothing
    persists except window position.
@@ -91,11 +91,11 @@ Kept as-is: `src/client/resolve-component.ts` (`describeElement`,
 - **No `data-src-loc`** (element not from a `.vue` template) — omit
   `:line:col-line:col`, keep `<tag> · ComponentName (file)`.
 - **`modern-screenshot` throws** (cross-origin resource, unsupported CSS) —
-  show "Не удалось сделать скриншот" in place of the image; the path text
+  show "Failed to take screenshot" in place of the image; the path text
   stays clickable/copyable regardless.
 - **Clipboard API unavailable/denied** (insecure context, old browser,
-  permission denied) — catch and show "Не удалось скопировать" instead of
-  "Скопировано"; overlay stays open and usable.
+  permission denied) — catch and show "Failed to copy" instead of
+  "Copied"; overlay stays open and usable.
 - **Alt+C while already open** — no-op (existing behavior).
 - **Click lands inside the overlay's own panel** — pick-mode click handler
   excludes the overlay's own DOM subtree (`host`), so the panel can't select

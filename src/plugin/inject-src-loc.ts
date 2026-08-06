@@ -52,7 +52,7 @@ function collectInsertions(
 }
 
 export function injectSourceLocations(source: string, file: string): string {
-  // Не менять, потому что сбой парсинга должен молча вернуть исходник, а не уронить dev-сервер.
+  // Do not change, because a parse failure must silently return the source instead of crashing the dev server.
   let ast;
   try {
     ast = parse(source, { filename: file }).descriptor.template?.ast;

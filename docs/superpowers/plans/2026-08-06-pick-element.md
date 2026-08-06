@@ -570,7 +570,7 @@ Expected: FAIL — module doesn't exist.
 ```typescript
 // src/client/clipboard.ts
 // Thin wrappers around the Clipboard API that never throw — callers just
-// branch on `ok` to show "Скопировано" / "Не удалось скопировать".
+// branch on `ok` to show "Copied" / "Failed to copy".
 export interface CopyResult {
   ok: boolean;
 }
@@ -685,7 +685,7 @@ describe("overlay", () => {
     const o = createOverlay();
     o.open();
     expect(shadow().querySelector(".hint")?.textContent).toMatch(
-      /выберите элемент/i,
+      /pick an element/i,
     );
     o.destroy();
   });
@@ -740,7 +740,7 @@ describe("overlay", () => {
     );
     await tick();
     expect(shadow().querySelector(".path + .status")?.textContent).toBe(
-      "Скопировано",
+      "Copied",
     );
     o.destroy();
   });
@@ -761,7 +761,7 @@ describe("overlay", () => {
     );
     await tick();
     expect(shadow().querySelector(".path + .status")?.textContent).toBe(
-      "Не удалось скопировать",
+      "Failed to copy",
     );
     o.destroy();
   });
@@ -782,7 +782,7 @@ describe("overlay", () => {
     );
     await tick();
     expect(shadow().querySelector("img.shot + .status")?.textContent).toBe(
-      "Скопировано",
+      "Copied",
     );
     o.destroy();
   });
@@ -1002,7 +1002,7 @@ export function createOverlay(): Overlay {
     panel = el("div", "panel hidden");
     header = el("div", "header");
     const title = el("span", "title");
-    title.textContent = "Выберите элемент";
+    title.textContent = "Pick an element";
     const closeBtn = el("button", "close");
     closeBtn.textContent = "×";
     closeBtn.addEventListener("click", () => close());
@@ -1014,7 +1014,7 @@ export function createOverlay(): Overlay {
     root.appendChild(panel);
 
     pickHint = el("div", "pickhint hidden");
-    pickHint.textContent = "Кликни по элементу · Esc — закрыть";
+    pickHint.textContent = "Click an element · Esc to close";
     box = el("div", "box hidden");
     tip = el("div", "tip hidden");
     root.append(pickHint, box, tip);
@@ -1028,12 +1028,12 @@ export function createOverlay(): Overlay {
   function renderEmpty(): void {
     body.innerHTML = "";
     const hint = el("div", "hint");
-    hint.textContent = "Выберите элемент";
+    hint.textContent = "Pick an element";
     body.appendChild(hint);
   }
 
   function showStatus(target: HTMLElement, ok: boolean): void {
-    target.textContent = ok ? "Скопировано" : "Не удалось скопировать";
+    target.textContent = ok ? "Copied" : "Failed to copy";
     target.classList.toggle("fail", !ok);
     if (statusTimer) clearTimeout(statusTimer);
     statusTimer = setTimeout(() => {
@@ -1072,7 +1072,7 @@ export function createOverlay(): Overlay {
         body.append(img, imgStatus);
       })
       .catch(() => {
-        imgStatus.textContent = "Не удалось сделать скриншот";
+        imgStatus.textContent = "Failed to capture screenshot";
         imgStatus.classList.add("fail");
         body.append(imgStatus);
       });
@@ -1683,11 +1683,11 @@ the picker (default `KeyC`, i.e. **Alt+C**).
 ## Usage
 
 1. Run your Vue+Vite dev server and open the preview.
-2. Press **Alt+C** — a small panel opens: "Выберите элемент".
+2. Press **Alt+C** — a small panel opens: "Pick an element".
 3. Click any element on the page. The panel shows its path (tag, Vue component name, and the
    source file:line:col-line:col when resolvable) and a screenshot of the element with 30px of
    real surrounding page content padded on each side.
-4. Click the path text to copy it, or the screenshot to copy the PNG — either shows "Скопировано"
+4. Click the path text to copy it, or the screenshot to copy the PNG — either shows "Copied"
    next to what you clicked.
 5. Click a different element while the panel is open to replace the selection. Drag the panel by
    its header to reposition it — the position is remembered (`localStorage`) across reloads.

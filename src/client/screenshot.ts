@@ -64,7 +64,7 @@ export async function captureElementScreenshot(
   const full = await domToCanvas(document.documentElement, {
     width: window.innerWidth,
     height: window.innerHeight,
-    // Не менять, потому что restoreScrollPosition:false рассинхронит canvas с getBoundingClientRect() при scroll
+    // Do not change, because restoreScrollPosition:false desyncs the canvas from getBoundingClientRect() on scroll
     features: { restoreScrollPosition: true },
     filter: excludeRoot ? (node) => node !== excludeRoot : undefined,
   });

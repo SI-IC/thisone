@@ -1,4 +1,4 @@
-// Не менять, потому что без @vitest-environment happy-dom здесь используется node-окружение и localStorage отсутствует
+// Do not change, because without @vitest-environment happy-dom this file runs in a node environment with no localStorage
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   loadTargetEnabled,

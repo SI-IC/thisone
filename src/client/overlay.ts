@@ -34,6 +34,7 @@ const STYLE = `
   padding: 8px 10px; cursor: move; background: #181825; user-select: none;
 }
 .title { font-weight: 600; font-size: 13px; }
+.actions { display: flex; align-items: center; gap: 6px; }
 .close {
   cursor: pointer; border: none; background: transparent; color: #a6adc8;
   font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 4px;
@@ -43,6 +44,7 @@ const STYLE = `
   cursor: pointer; border: 1px solid #585b70; background: #11111b; color: #a6adc8;
   padding: 2px 6px; border-radius: 4px; display: flex; align-items: center;
 }
+.target-toggle svg { transform: rotate(-45deg); }
 .target-toggle:hover { background: #313244; color: #eee; border-color: #89b4fa; }
 .target-toggle.active { color: #89b4fa; border-color: #89b4fa; background: rgba(137,180,250,.12); }
 .target-toggle.active:hover { background: #313244; }
@@ -86,6 +88,10 @@ img.shot:hover { border-color: #89b4fa; }
   padding: 2px 6px; border-radius: 4px; font-size: 11px; white-space: nowrap;
 }
 `;
+
+function pinIcon(size: number): string {
+  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="currentColor"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>`;
+}
 
 function targetIcon(size: number): string {
   return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>`;
@@ -174,17 +180,19 @@ export function createOverlay(): Overlay {
     panel = el("div", "panel hidden");
     header = el("div", "header");
     const title = el("span", "title");
-    title.textContent = "Выберите элемент";
+    title.textContent = "Select an element";
     targetToggle = el("button", "target-toggle");
-    targetToggle.innerHTML = targetIcon(14);
-    targetToggle.title = "Показывать кнопку быстрого доступа у края экрана";
+    targetToggle.innerHTML = pinIcon(14);
+    targetToggle.title = "Show quick-access button at the screen edge";
     targetToggle.addEventListener("click", () =>
       setTargetEnabled(!targetEnabled),
     );
     const closeBtn = el("button", "close");
     closeBtn.textContent = "×";
     closeBtn.addEventListener("click", () => close());
-    header.append(title, targetToggle, closeBtn);
+    const actions = el("div", "actions");
+    actions.append(targetToggle, closeBtn);
+    header.append(title, actions);
 
     body = el("div", "body");
 
@@ -192,12 +200,12 @@ export function createOverlay(): Overlay {
     root.appendChild(panel);
 
     pickHint = el("div", "pickhint hidden");
-    pickHint.textContent = "Кликни по элементу · Esc — закрыть";
+    pickHint.textContent = "Click an element · Esc to close";
     box = el("div", "box hidden");
     tip = el("div", "tip hidden");
     targetBtn = el("button", "target-btn hidden");
     targetBtn.innerHTML = targetIcon(20);
-    targetBtn.title = "ПКМ для перемещения";
+    targetBtn.title = "Right-click drag to move";
     root.append(pickHint, box, tip, targetBtn);
 
     targetEnabled = loadTargetEnabled();
@@ -220,12 +228,12 @@ export function createOverlay(): Overlay {
   function renderEmpty(): void {
     body.innerHTML = "";
     const hint = el("div", "hint");
-    hint.textContent = "Выберите элемент";
+    hint.textContent = "Select an element";
     body.appendChild(hint);
   }
 
   function showStatus(target: HTMLElement, ok: boolean): void {
-    target.textContent = ok ? "Скопировано" : "Не удалось скопировать";
+    target.textContent = ok ? "Copied" : "Copy failed";
     target.classList.toggle("fail", !ok);
     if (statusTimer) clearTimeout(statusTimer);
     statusTimer = setTimeout(() => {
@@ -265,7 +273,7 @@ export function createOverlay(): Overlay {
       })
       .catch(() => {
         if (myPickId !== pickId) return;
-        imgStatus.textContent = "Не удалось сделать скриншот";
+        imgStatus.textContent = "Screenshot failed";
         imgStatus.classList.add("fail");
         body.append(imgStatus);
       });

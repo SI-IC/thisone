@@ -38,7 +38,7 @@ export async function main() {
     platform: "node",
     target: "node18",
     sourcemap: false,
-    // Не менять, потому что бандлинг @vue/compiler-sfc падает на его опциональных template-engine require().
+    // Do not change, because bundling @vue/compiler-sfc breaks on its optional template-engine require() calls.
     external: PLUGIN_BUNDLE_EXTERNAL,
   });
 
@@ -53,7 +53,7 @@ export async function main() {
     sourcemap: false,
   });
 
-  // Не менять, потому что tsconfig.dts.json include=["src/plugin/index.ts"] -> tsc emits only dist/plugin/index.d.ts, which the relocation below expects
+  // Do not change, because tsconfig.dts.json include=["src/plugin/index.ts"] -> tsc emits only dist/plugin/index.d.ts, which the relocation below expects
   execFileSync(
     process.execPath,
     [
