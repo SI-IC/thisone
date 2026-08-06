@@ -76,7 +76,7 @@ describe("injectSourceLocations", () => {
   it("injects on both roots of a multi-root (fragment) template", () => {
     const src = `<template>\n  <div>a</div>\n  <span>b</span>\n</template>\n`;
     const out = injectSourceLocations(src, FILE);
-    expect(attrOf(out, "div")).toBe(`${FILE}:2:3-2:16`);
+    expect(attrOf(out, "div")).toBe(`${FILE}:2:3-2:15`);
     expect(attrOf(out, "span")).toBe(`${FILE}:3:3-3:17`);
   });
 
