@@ -42,3 +42,21 @@ Escape closes the panel, and a dragged panel position is saved to `localStorage`
 reopen/reload. Edge cases — re-pick while open, corrupt `localStorage` falling back to a default
 position, and a prod `vite build` not injecting the overlay — are each a separate `check(...)`
 block; see the `edge:*` / `prod` labels in the script.
+
+## React harness
+
+`pick-element-react.e2e.mjs` covers what's specific to the React path against a **bare**
+Vite+React app (`examples/demo-app-react/`, deliberately without `@vitejs/plugin-react`):
+source-location + component-name resolution for a plain function component, a
+`memo()`-wrapped component, and the default-exported root component, plus the same prod-build
+exclusion check as the Vue harness. Panel mechanics (drag, clipboard, screenshot, hotkey) are
+framework-agnostic and already fully covered by `pick-element.e2e.mjs` against the Vue demo
+app — this script doesn't repeat them.
+
+Run:
+
+```
+bash scripts/e2e-react.sh
+```
+
+Same `link:../..` wiring note as the Vue demo app applies to `examples/demo-app-react`.

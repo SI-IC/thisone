@@ -3,6 +3,9 @@
 // (`el.__vueParentComponent`, `type.__file`) and degrades to null/anonymous when
 // they are absent (element outside the app, production build without `__file`).
 
+import { baseName } from "./base-name";
+import { resolveReactComponent } from "./resolve-component-react";
+
 export interface SourceLocation {
   file: string;
   startLine: number;
@@ -27,13 +30,6 @@ export interface ComponentDescriptor {
 
 export type ResolvedComponent = ComponentDescriptor;
 
-/** Strip directory and extension: `/src/components/Counter.vue` -> `Counter`. */
-function baseName(file: string): string {
-  const noQuery = file.split(/[?#]/)[0];
-  const last = noQuery.split(/[\\/]/).pop() || noQuery;
-  return last.replace(/\.\w+$/, "");
-}
-
 /** Best name for a Vue ComponentInternalInstance: name -> __name -> file base. */
 export function componentName(instance: any): string {
   const type = instance?.type ?? {};
@@ -44,6 +40,12 @@ export function componentName(instance: any): string {
 }
 
 export function resolveComponent(el: Element | null): ResolvedComponent | null {
+  if (!el) return null;
+  if ((el as any).__vueParentComponent) return resolveVueComponent(el);
+  return resolveReactComponent(el);
+}
+
+function resolveVueComponent(el: Element | null): ResolvedComponent | null {
   if (!el) return null;
   const start = (el as any).__vueParentComponent;
   if (!start) return null;

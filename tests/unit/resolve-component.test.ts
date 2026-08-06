@@ -156,3 +156,33 @@ describe("formatElementPath", () => {
     expect(formatElementPath(el)).toBe("<button> · #go");
   });
 });
+
+describe("resolveComponent dispatcher", () => {
+  it("returns null for an element outside both the Vue and React trees", () => {
+    expect(resolveComponent(document.createElement("i"))).toBeNull();
+  });
+
+  it("dispatches to the React resolver when a react fiber key is present (no __vueParentComponent)", () => {
+    function Widget() {}
+    (Widget as any).__file = "/src/Widget.tsx";
+    const el = document.createElement("span");
+    (el as any).__reactFiber$test1 = { type: Widget, return: null };
+    const r = resolveComponent(el)!;
+    expect(r.name).toBe("Widget");
+    expect(r.file).toBe("/src/Widget.tsx");
+  });
+
+  it("prefers the Vue resolver when both markers are present (Vue-marker check comes first)", () => {
+    const el = document.createElement("span");
+    (el as any).__vueParentComponent = {
+      type: { name: "VueWidget" },
+      parent: null,
+    };
+    (el as any).__reactFiber$test2 = {
+      type: function ReactWidget() {},
+      return: null,
+    };
+    const r = resolveComponent(el)!;
+    expect(r.name).toBe("VueWidget");
+  });
+});
