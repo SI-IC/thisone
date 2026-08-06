@@ -107,3 +107,20 @@ export function describeElement(el: Element): ElementDescriptor {
     sourceLoc: parseSourceLoc(el.getAttribute("data-src-loc")),
   };
 }
+
+/**
+ * Formats element to `<tag> · ComponentName · file:startLine:startCol-endLine:endCol`.
+ * @param el - DOM element to format
+ * @returns formatted path text, degrades gracefully when sourceLoc or component is unavailable
+ */
+export function formatElementPath(el: Element): string {
+  const d = describeElement(el);
+  const c = resolveComponent(el);
+  const tag = `<${d.tag}>`;
+  if (!c) return `${tag} · ${d.selector}`;
+  if (d.sourceLoc) {
+    const l = d.sourceLoc;
+    return `${tag} · ${c.name} · ${l.file}:${l.startLine}:${l.startColumn}-${l.endLine}:${l.endColumn}`;
+  }
+  return c.file ? `${tag} · ${c.name} (${c.file})` : `${tag} · ${c.name}`;
+}
