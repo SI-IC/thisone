@@ -1,5 +1,0 @@
-{
-  "env": {
-    "MAIN_SKILL_VERIFY_IGNORE_GLOBS": "examples/demo-app-react/src/main.tsx:examples/demo-app-react/src/App.tsx:examples/demo-app-react/src/Counter.tsx:examples/demo-app-react/src/MemoBadge.tsx:scripts/e2e-react.sh"
-  }
-}
