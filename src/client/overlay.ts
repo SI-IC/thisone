@@ -40,11 +40,11 @@ const STYLE = `
 }
 .close:hover { background: #313244; color: #eee; }
 .target-toggle {
-  cursor: pointer; border: none; background: transparent; color: #a6adc8;
+  cursor: pointer; border: 1px solid #45475a; background: #11111b; color: #a6adc8;
   padding: 2px 6px; border-radius: 4px; display: flex; align-items: center;
 }
-.target-toggle:hover { background: #313244; color: #eee; }
-.target-toggle.active { color: #89b4fa; }
+.target-toggle:hover { background: #313244; color: #eee; border-color: #89b4fa; }
+.target-toggle.active { color: #89b4fa; border-color: #89b4fa; background: #1c2333; }
 .body { padding: 12px; }
 .hint { color: #a6adc8; }
 .path {
