@@ -208,4 +208,16 @@ describe("injectSourceLocations (React) — third-party / aliased HOCs", () => {
     const out = injectSourceLocations(src, "/proj/Foo.tsx");
     expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
   });
+
+  it("does not attach statics to an unrelated single-call Identifier callee with a PascalCase argument (deepFreeze(SomeSchema))", () => {
+    const src = `const Config = deepFreeze(SomeSchema);\n`;
+    const out = injectSourceLocations(src, "/proj/x.tsx");
+    expect(out).not.toContain("Config.__file");
+  });
+
+  it("wraps injected statics in try/catch so a wrong match can't throw on a frozen/non-extensible target", () => {
+    const src = `const Foo = withRouter(Bar);\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toMatch(/try\s*\{[\s\S]*Foo\.__file[\s\S]*\}\s*catch/);
+  });
 });

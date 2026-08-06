@@ -39261,9 +39261,13 @@ function containsJSX(path) {
   });
   return found2;
 }
+function looksLikeHocFactoryName(name) {
+  return name.startsWith("with");
+}
 function isGenericHocCallWrappingComponent(callPath) {
   const callee = callPath.node.callee;
-  if (!isIdentifier(callee) && !isCallExpression(callee)) return false;
+  const calleeIsPlausibleHoc = isCallExpression(callee) || isIdentifier(callee) && looksLikeHocFactoryName(callee.name);
+  if (!calleeIsPlausibleHoc) return false;
   return callPath.get("arguments").some((argPath) => {
     const arg = argPath.node;
     if (isIdentifier(arg) && isPascalCase(arg.name)) return true;
@@ -39275,19 +39279,24 @@ function isGenericHocCallWrappingComponent(callPath) {
 }
 function staticsFor(name, relFile) {
   return [
-    expressionStatement(
-      assignmentExpression(
-        "=",
-        memberExpression(identifier(name), identifier("__file")),
-        stringLiteral(relFile)
-      )
-    ),
-    expressionStatement(
-      assignmentExpression(
-        "=",
-        memberExpression(identifier(name), identifier("__name")),
-        stringLiteral(name)
-      )
+    tryStatement(
+      blockStatement([
+        expressionStatement(
+          assignmentExpression(
+            "=",
+            memberExpression(identifier(name), identifier("__file")),
+            stringLiteral(relFile)
+          )
+        ),
+        expressionStatement(
+          assignmentExpression(
+            "=",
+            memberExpression(identifier(name), identifier("__name")),
+            stringLiteral(name)
+          )
+        )
+      ]),
+      catchClause(null, blockStatement([]))
     )
   ];
 }

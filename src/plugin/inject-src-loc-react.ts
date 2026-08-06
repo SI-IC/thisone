@@ -67,11 +67,18 @@ function containsJSX(path: import("@babel/traverse").NodePath): boolean {
   return found;
 }
 
+function looksLikeHocFactoryName(name: string): boolean {
+  return name.startsWith("with");
+}
+
 function isGenericHocCallWrappingComponent(
   callPath: import("@babel/traverse").NodePath<t.CallExpression>,
 ): boolean {
   const callee = callPath.node.callee;
-  if (!t.isIdentifier(callee) && !t.isCallExpression(callee)) return false;
+  const calleeIsPlausibleHoc =
+    t.isCallExpression(callee) ||
+    (t.isIdentifier(callee) && looksLikeHocFactoryName(callee.name));
+  if (!calleeIsPlausibleHoc) return false;
   return callPath.get("arguments").some((argPath) => {
     const arg = argPath.node;
     if (t.isIdentifier(arg) && isPascalCase(arg.name)) return true;
@@ -85,21 +92,26 @@ function isGenericHocCallWrappingComponent(
   });
 }
 
-function staticsFor(name: string, relFile: string): t.ExpressionStatement[] {
+function staticsFor(name: string, relFile: string): t.Statement[] {
   return [
-    t.expressionStatement(
-      t.assignmentExpression(
-        "=",
-        t.memberExpression(t.identifier(name), t.identifier("__file")),
-        t.stringLiteral(relFile),
-      ),
-    ),
-    t.expressionStatement(
-      t.assignmentExpression(
-        "=",
-        t.memberExpression(t.identifier(name), t.identifier("__name")),
-        t.stringLiteral(name),
-      ),
+    t.tryStatement(
+      t.blockStatement([
+        t.expressionStatement(
+          t.assignmentExpression(
+            "=",
+            t.memberExpression(t.identifier(name), t.identifier("__file")),
+            t.stringLiteral(relFile),
+          ),
+        ),
+        t.expressionStatement(
+          t.assignmentExpression(
+            "=",
+            t.memberExpression(t.identifier(name), t.identifier("__name")),
+            t.stringLiteral(name),
+          ),
+        ),
+      ]),
+      t.catchClause(null, t.blockStatement([])),
     ),
   ];
 }
@@ -138,7 +150,7 @@ export function injectSourceLocations(source: string, relFile: string): string {
 
       Program(programPath) {
         const aliases = collectReactAliases(programPath.node);
-        const inserts: t.ExpressionStatement[] = [];
+        const inserts: t.Statement[] = [];
         for (const stmtPath of programPath.get("body")) {
           const declPath =
             stmtPath.isExportNamedDeclaration() ||
