@@ -8,5 +8,6 @@ Never push to `main` without a release: a version bump (`package.json`), a rebui
 - New feature / behavior change → bump manually before committing: `pnpm release minor` (or
   `major`) so the version reflects the change, not just a patch. The pre-commit hook skips its
   own auto-bump once `package.json`'s working version already differs from `HEAD`'s.
-- Before `git push`, always `git push --follow-tags` (or `git push && git push --tags`) — a commit
-  without its tag pushed is not a release.
+- The `post-commit` tag is lightweight (`git tag "$tag"`, no `-a`) — `--follow-tags` only pushes
+  annotated tags and silently skips it. Push it explicitly: `git push origin v<version>` (or
+  `git push --tags`). A commit without its tag pushed is not a release.
