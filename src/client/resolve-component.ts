@@ -3,11 +3,27 @@
 // (`el.__vueParentComponent`, `type.__file`) and degrades to null/anonymous when
 // they are absent (element outside the app, production build without `__file`).
 
-import type {
-  ComponentDescriptor,
-  ElementDescriptor,
-  SourceLocation,
-} from "../server/types";
+export interface SourceLocation {
+  file: string;
+  startLine: number;
+  startColumn: number;
+  endLine: number;
+  endColumn: number;
+}
+
+export interface ElementDescriptor {
+  tag: string;
+  classes: string[];
+  text: string;
+  selector: string;
+  sourceLoc: SourceLocation | null;
+}
+
+export interface ComponentDescriptor {
+  name: string;
+  file: string | null;
+  chain: string[];
+}
 
 export type ResolvedComponent = ComponentDescriptor;
 

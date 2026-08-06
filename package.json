@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-claude-feedback",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "description": "Send element-anchored feedback from a Vue+Vite dev preview to Claude Code (Alt+C).",
   "type": "module",
   "license": "MIT",
@@ -35,7 +35,6 @@
   },
   "devDependencies": {
     "@types/node": "24.12.2",
-    "@types/ws": "8.18.1",
     "@vitejs/plugin-vue": "6.0.3",
     "esbuild": "0.27.2",
     "happy-dom": "20.6.1",
@@ -44,8 +43,7 @@
     "prettier": "^3.9.6",
     "typescript": "5.9.3",
     "vite": "7.3.1",
-    "vitest": "4.0.18",
-    "ws": "8.19.0"
+    "vitest": "4.0.18"
   },
   "packageManager": "pnpm@10.33.0",
   "dependencies": {
