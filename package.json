@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-pick-element",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Pick a DOM element in a Vue+Vite dev preview (Alt+C) and copy its component path or a screenshot to the clipboard.",
   "type": "module",
   "license": "MIT",
