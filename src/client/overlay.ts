@@ -1,51 +1,14 @@
-// The feedback overlay: a Shadow-DOM modal (textarea + actions) plus an element
-// picker (hover-highlight + component tooltip, click to select, Esc to cancel).
-// Native DOM only — no Vue — so it can't conflict with the host app's framework
-// or styles. The overlay assembles the FeedbackPayload (url + element + component
-// + redacted console) and hands it to the injected `send` callback.
+import { resolveComponent, formatElementPath } from "./resolve-component";
+import { captureElementScreenshot } from "./screenshot";
+import { copyText, copyImage } from "./clipboard";
+import { loadPosition, savePosition, type Position } from "./position-store";
 
-import { resolveComponent, describeElement } from "./resolve-component";
-import { redactConsole } from "./redact";
-import type {
-  ConsoleEntry,
-  ElementDescriptor,
-  ComponentDescriptor,
-} from "../server/types";
-
-export const HOST_ID = "__claude_feedback_root";
-
-export interface SendResult {
-  ok: boolean;
-  status?: number;
-  error?: string;
-}
-
-export interface OverlayDeps {
-  /** This tab's id, stamped onto every payload. */
-  tabId: string;
-  /** Current console ring buffer (redacted before send). */
-  getConsole: () => ConsoleEntry[];
-  /** Ship the assembled payload to the bridge. */
-  send: (payload: {
-    url: string;
-    message: string;
-    element: ElementDescriptor | null;
-    component: ComponentDescriptor | null;
-    console: ConsoleEntry[];
-    tabId: string;
-  }) => Promise<SendResult>;
-  /** Notified whenever the picked element changes (index.ts tracks last-el). */
-  onPick?: (el: Element | null) => void;
-}
+export const HOST_ID = "__pick_element_root";
 
 export interface Overlay {
   open(): void;
   close(): void;
   isOpen(): boolean;
-  isPicking(): boolean;
-  startPick(): void;
-  cancelPick(): void;
-  lastEl(): Element | null;
   destroy(): void;
 }
 
@@ -53,24 +16,33 @@ const STYLE = `
 :host { all: initial; }
 * { box-sizing: border-box; font-family: ui-sans-serif, system-ui, sans-serif; }
 .panel {
-  position: fixed; right: 16px; bottom: 16px; width: 340px; z-index: 2147483646;
+  position: fixed; width: 340px; z-index: 2147483646;
   background: #1e1e2e; color: #eee; border: 1px solid #444; border-radius: 10px;
-  box-shadow: 0 8px 30px rgba(0,0,0,.45); padding: 14px; font-size: 13px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.45); font-size: 13px; overflow: hidden;
 }
-.title { font-weight: 600; margin: 0 0 8px; font-size: 13px; }
-textarea {
-  width: 100%; height: 84px; resize: vertical; background: #11111b; color: #eee;
-  border: 1px solid #45475a; border-radius: 6px; padding: 8px; font-size: 13px;
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 10px; cursor: move; background: #181825; user-select: none;
 }
-.meta { margin: 8px 0; color: #a6adc8; font-size: 12px; min-height: 16px; word-break: break-all; }
-.row { display: flex; gap: 8px; margin-top: 8px; }
-button {
-  flex: 1; cursor: pointer; border: 1px solid #585b70; background: #313244;
-  color: #eee; border-radius: 6px; padding: 7px 8px; font-size: 12px;
+.title { font-weight: 600; font-size: 13px; }
+.close {
+  cursor: pointer; border: none; background: transparent; color: #a6adc8;
+  font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 4px;
 }
-button.primary { background: #89b4fa; color: #11111b; border-color: #89b4fa; font-weight: 600; }
-button:disabled { opacity: .5; cursor: default; }
-.err { color: #f38ba8; font-size: 12px; margin-top: 6px; min-height: 14px; }
+.close:hover { background: #313244; color: #eee; }
+.body { padding: 12px; }
+.hint { color: #a6adc8; }
+.path {
+  cursor: pointer; word-break: break-all; padding: 6px; border-radius: 6px;
+  background: #11111b; border: 1px solid #45475a;
+}
+.path:hover { border-color: #89b4fa; }
+img.shot {
+  display: block; max-width: 100%; margin-top: 8px; cursor: pointer;
+  border: 1px solid #45475a; border-radius: 6px;
+}
+.status { font-size: 11px; color: #a6b8fa; min-height: 14px; margin-top: 4px; }
+.status.fail { color: #f38ba8; }
 .hidden { display: none !important; }
 .pickhint {
   position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 2147483647;
@@ -88,24 +60,22 @@ button:disabled { opacity: .5; cursor: default; }
 }
 `;
 
-export function createOverlay(deps: OverlayDeps): Overlay {
+export function createOverlay(): Overlay {
   const doc = document;
   const win = window;
   let host: HTMLElement | null = null;
   let root: ShadowRoot;
   let panel: HTMLElement;
-  let textarea: HTMLTextAreaElement;
-  let metaEl: HTMLElement;
-  let errEl: HTMLElement;
-  let sendBtn: HTMLButtonElement;
+  let header: HTMLElement;
+  let body: HTMLElement;
   let pickHint: HTMLElement;
   let box: HTMLElement;
   let tip: HTMLElement;
 
   let open = false;
-  let picking = false;
-  let submitting = false;
-  let selectedEl: Element | null = null;
+  let statusTimer: ReturnType<typeof setTimeout> | null = null;
+  let currentShotUrl: string | null = null;
+  let dragOffset: { dx: number; dy: number } | null = null;
 
   function el<K extends keyof HTMLElementTagNameMap>(
     tag: K,
@@ -114,6 +84,19 @@ export function createOverlay(deps: OverlayDeps): Overlay {
     const n = doc.createElement(tag);
     if (cls) n.className = cls;
     return n;
+  }
+
+  function defaultPosition(): Position {
+    return {
+      x: Math.max(16, win.innerWidth - 356),
+      y: Math.max(16, win.innerHeight - 200),
+    };
+  }
+
+  function applyPosition(): void {
+    const pos = loadPosition() ?? defaultPosition();
+    panel.style.left = pos.x + "px";
+    panel.style.top = pos.y + "px";
   }
 
   function ensureMounted(): void {
@@ -131,78 +114,81 @@ export function createOverlay(deps: OverlayDeps): Overlay {
     root.appendChild(style);
 
     panel = el("div", "panel hidden");
-    const title = el("p", "title");
-    title.textContent = "Claude feedback";
-    textarea = el("textarea");
-    textarea.placeholder = "Что улучшить / что не так?";
-    metaEl = el("div", "meta");
-    metaEl.textContent = "Элемент не выбран";
+    header = el("div", "header");
+    const title = el("span", "title");
+    title.textContent = "Выберите элемент";
+    const closeBtn = el("button", "close");
+    closeBtn.textContent = "×";
+    closeBtn.addEventListener("click", () => close());
+    header.append(title, closeBtn);
 
-    const row1 = el("div", "row");
-    const pickBtn = el("button");
-    pickBtn.textContent = "Выделить элемент";
-    pickBtn.addEventListener("click", () => startPick());
-    row1.appendChild(pickBtn);
+    body = el("div", "body");
 
-    const row2 = el("div", "row");
-    sendBtn = el("button", "primary");
-    sendBtn.textContent = "Отправить";
-    sendBtn.addEventListener("click", () => void submit());
-    const cancelBtn = el("button");
-    cancelBtn.textContent = "Отмена";
-    cancelBtn.addEventListener("click", () => close());
-    row2.appendChild(sendBtn);
-    row2.appendChild(cancelBtn);
-
-    errEl = el("div", "err");
-
-    panel.append(title, textarea, metaEl, row1, row2, errEl);
+    panel.append(header, body);
     root.appendChild(panel);
 
     pickHint = el("div", "pickhint hidden");
-    pickHint.textContent = "Кликни по элементу · Esc — отмена";
+    pickHint.textContent = "Кликни по элементу · Esc — закрыть";
     box = el("div", "box hidden");
     tip = el("div", "tip hidden");
     root.append(pickHint, box, tip);
 
-    win.addEventListener("visibilitychange", onVisibility);
+    header.addEventListener("mousedown", onDragStart);
     win.addEventListener("beforeunload", cancelPick);
   }
 
-  function setMeta(): void {
-    if (!selectedEl) {
-      metaEl.textContent = "Элемент не выбран";
-      return;
+  function renderEmpty(): void {
+    body.innerHTML = "";
+    const hint = el("div", "hint");
+    hint.textContent = "Выберите элемент";
+    body.appendChild(hint);
+  }
+
+  function showStatus(target: HTMLElement, ok: boolean): void {
+    target.textContent = ok ? "Скопировано" : "Не удалось скопировать";
+    target.classList.toggle("fail", !ok);
+    if (statusTimer) clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => {
+      target.textContent = "";
+      target.classList.remove("fail");
+    }, 1500);
+  }
+
+  function renderSelection(target: Element): void {
+    if (currentShotUrl) {
+      URL.revokeObjectURL(currentShotUrl);
+      currentShotUrl = null;
     }
-    const d = describeElement(selectedEl);
-    const c = resolveComponent(selectedEl);
-    metaEl.textContent = c
-      ? `<${d.tag}> · ${c.name}${c.file ? " (" + c.file + ")" : ""}`
-      : `<${d.tag}> · ${d.selector}`;
-  }
+    body.innerHTML = "";
 
-  function showError(msg: string): void {
-    errEl.textContent = msg;
-  }
+    const pathText = formatElementPath(target);
+    const pathEl = el("div", "path");
+    pathEl.textContent = pathText;
+    const pathStatus = el("div", "status");
+    pathEl.addEventListener("click", () => {
+      void copyText(pathText).then((r) => showStatus(pathStatus, r.ok));
+    });
 
-  function openModal(): void {
-    ensureMounted();
-    if (open) return; // Alt+C while open is a no-op (never spawn a second modal)
-    open = true;
-    errEl.textContent = "";
-    panel.classList.remove("hidden");
-    setMeta();
-    textarea.focus();
-  }
+    const imgStatus = el("div", "status");
+    body.append(pathEl, pathStatus);
 
-  function close(): void {
-    if (!host) return;
-    cancelPick();
-    open = false;
-    panel.classList.add("hidden");
+    captureElementScreenshot(target)
+      .then((blob) => {
+        const img = el("img", "shot");
+        img.alt = "screenshot";
+        currentShotUrl = URL.createObjectURL(blob);
+        img.src = currentShotUrl;
+        img.addEventListener("click", () => {
+          void copyImage(blob).then((r) => showStatus(imgStatus, r.ok));
+        });
+        body.append(img, imgStatus);
+      })
+      .catch(() => {
+        imgStatus.textContent = "Не удалось сделать скриншот";
+        imgStatus.classList.add("fail");
+        body.append(imgStatus);
+      });
   }
-
-  // ---- element picker ------------------------------------------------------
 
   function pathHasHost(ev: Event): boolean {
     const path = (ev.composedPath?.() ?? []) as EventTarget[];
@@ -218,7 +204,6 @@ export function createOverlay(deps: OverlayDeps): Overlay {
   }
 
   function onMove(ev: MouseEvent): void {
-    if (!picking) return;
     if (pathHasHost(ev)) {
       box.classList.add("hidden");
       tip.classList.add("hidden");
@@ -240,41 +225,23 @@ export function createOverlay(deps: OverlayDeps): Overlay {
   }
 
   function onClick(ev: MouseEvent): void {
-    if (!picking) return;
-    if (pathHasHost(ev)) return; // clicks on our own UI are ignored
+    if (pathHasHost(ev)) return;
     ev.preventDefault();
     ev.stopPropagation();
     const t = targetUnder(ev);
-    selectedEl = t;
-    deps.onPick?.(t);
-    cancelPick();
-    openModalAfterPick();
+    if (!t) return;
+    renderSelection(t);
   }
 
   function onKey(ev: KeyboardEvent): void {
-    if (picking && ev.key === "Escape") {
+    if (ev.key === "Escape") {
       ev.preventDefault();
       ev.stopPropagation();
-      cancelPick();
-      openModalAfterPick();
+      close();
     }
   }
 
-  function onVisibility(): void {
-    if (doc.visibilityState === "hidden") cancelPick();
-  }
-
-  function openModalAfterPick(): void {
-    open = false; // force openModal to re-show (it no-ops when already open)
-    openModal();
-  }
-
   function startPick(): void {
-    ensureMounted();
-    if (picking) return;
-    picking = true;
-    open = false;
-    panel.classList.add("hidden");
     pickHint.classList.remove("hidden");
     doc.addEventListener("mousemove", onMove, true);
     doc.addEventListener("click", onClick, true);
@@ -282,48 +249,57 @@ export function createOverlay(deps: OverlayDeps): Overlay {
   }
 
   function cancelPick(): void {
-    if (!picking) return;
-    picking = false;
-    if (pickHint) pickHint.classList.add("hidden");
-    if (box) box.classList.add("hidden");
-    if (tip) tip.classList.add("hidden");
+    pickHint.classList.add("hidden");
+    box.classList.add("hidden");
+    tip.classList.add("hidden");
     doc.removeEventListener("mousemove", onMove, true);
     doc.removeEventListener("click", onClick, true);
     doc.removeEventListener("keydown", onKey, true);
   }
 
-  // ---- submit --------------------------------------------------------------
+  function onDragStart(ev: MouseEvent): void {
+    if ((ev.target as HTMLElement).classList?.contains("close")) return;
+    const r = panel.getBoundingClientRect();
+    dragOffset = { dx: ev.clientX - r.left, dy: ev.clientY - r.top };
+    win.addEventListener("mousemove", onDragMove);
+    win.addEventListener("mouseup", onDragEnd);
+  }
 
-  async function submit(): Promise<void> {
-    if (submitting) return; // block double-click until the POST settles
-    submitting = true;
-    sendBtn.disabled = true;
-    showError("");
-    const payload = {
-      url: typeof location !== "undefined" ? location.href : "",
-      message: textarea.value,
-      element: selectedEl ? describeElement(selectedEl) : null,
-      component: selectedEl ? resolveComponent(selectedEl) : null,
-      console: redactConsole(deps.getConsole()),
-      tabId: deps.tabId,
-    };
-    try {
-      const res = await deps.send(payload);
-      if (res.ok) {
-        textarea.value = "";
-        selectedEl = null;
-        deps.onPick?.(null);
-        close();
-      } else if (res.status === 413) {
-        showError("Слишком большой контекст — сократи и попробуй снова.");
-      } else {
-        showError("Не удалось отправить — dev bridge недоступен?");
-      }
-    } catch {
-      showError("Dev bridge offline.");
-    } finally {
-      submitting = false;
-      sendBtn.disabled = false;
+  function onDragMove(ev: MouseEvent): void {
+    if (!dragOffset) return;
+    panel.style.left = ev.clientX - dragOffset.dx + "px";
+    panel.style.top = ev.clientY - dragOffset.dy + "px";
+  }
+
+  function onDragEnd(): void {
+    if (!dragOffset) return;
+    dragOffset = null;
+    win.removeEventListener("mousemove", onDragMove);
+    win.removeEventListener("mouseup", onDragEnd);
+    savePosition({
+      x: parseFloat(panel.style.left) || 0,
+      y: parseFloat(panel.style.top) || 0,
+    });
+  }
+
+  function openModal(): void {
+    ensureMounted();
+    if (open) return;
+    open = true;
+    panel.classList.remove("hidden");
+    applyPosition();
+    renderEmpty();
+    startPick();
+  }
+
+  function close(): void {
+    if (!host || !open) return;
+    cancelPick();
+    open = false;
+    panel.classList.add("hidden");
+    if (currentShotUrl) {
+      URL.revokeObjectURL(currentShotUrl);
+      currentShotUrl = null;
     }
   }
 
@@ -331,13 +307,8 @@ export function createOverlay(deps: OverlayDeps): Overlay {
     open: openModal,
     close,
     isOpen: () => open,
-    isPicking: () => picking,
-    startPick,
-    cancelPick,
-    lastEl: () => selectedEl,
     destroy: () => {
       cancelPick();
-      win.removeEventListener("visibilitychange", onVisibility);
       win.removeEventListener("beforeunload", cancelPick);
       if (host && host.parentNode) host.parentNode.removeChild(host);
       host = null;
