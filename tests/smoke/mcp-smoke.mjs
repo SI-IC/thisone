@@ -142,6 +142,11 @@ try {
       ]),
     "tools/list returns the five tools, got " + names.join(","),
   );
+  const getFeedbackTool = tools.find((t) => t.name === "get_feedback");
+  assert(
+    /sourceLoc/.test(getFeedbackTool.description),
+    "get_feedback description documents element.sourceLoc",
+  );
 
   // 5. feedback_status round-trips the bridge status.
   const status = resultJson(
