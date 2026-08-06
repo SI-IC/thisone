@@ -9,7 +9,7 @@
       "name": "claude-feedback",
       "source": "./claude-plugin",
       "description": "Alt+C in the dev preview to send Claude the page URL, picked element, its Vue component, and console — pull-based via MCP.",
-      "version": "0.0.17"
+      "version": "0.0.18"
     }
   ]
 }
