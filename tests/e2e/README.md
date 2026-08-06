@@ -1,9 +1,11 @@
 # e2e harness
 
-Full round-trip test against a real Vue 3 + Vite + Pinia app (`examples/demo-app/`), driven by
-headless Playwright (chromium). Exercises the whole flow that unit tests and smoke tests can't:
-Alt+C overlay, element picker resolving a real Vue component, submitted feedback draining through
-the bridge queue, and a Pinia store snapshot reflecting live UI state.
+Full round-trip test against a real Vue 3 + Vite app (`examples/demo-app/`), driven by headless
+Playwright (chromium). Exercises the whole flow that unit tests and smoke tests can't: Alt+C
+opening the picker overlay, the element picker resolving a real Vue component, the resolved path
+(with component name + source line numbers) being copied to the clipboard, an element screenshot
+being captured and copied to the clipboard as a PNG, and the picker panel's dragged position
+persisting across reopen and page reload.
 
 ## Run
 
@@ -12,7 +14,7 @@ bash scripts/e2e.sh
 ```
 
 This builds the root package, starts the demo app's dev server on a free port, runs
-`feedback.e2e.mjs` against it, and tears the dev server down. Prints `e2e ok` and exits 0 on
+`pick-element.e2e.mjs` against it, and tears the dev server down. Prints `e2e ok` and exits 0 on
 success. Takes well under a minute.
 
 First run needs the chromium binary:
@@ -30,10 +32,13 @@ app, and the e2e suite would exercise a stale `dist/client.js`. `link:` always r
 
 ## What it covers
 
-`feedback.e2e.mjs` asserts, in order: the demo page loads clean, Alt+C opens the shadow-DOM modal,
-the element picker resolves the `Counter` component, a submitted message round-trips through
-`GET /__claude_feedback/api/feedback?ack=1`, and a `POST /api/request {kind:'store'}` reflects live
-increment clicks. Edge cases (empty submission, console ring-buffer cap, concurrent snapshot
-requests, unknown store name, missing selector, refresh/reconnect, dev server going away, and a
-prod `vite build` not injecting the overlay) are each a separate `check(...)` block — see the
-`edge:*` / `prod` labels in the script.
+`pick-element.e2e.mjs` asserts, in order: the demo page loads clean with no console/page errors,
+Alt+C opens the shadow-DOM panel and pick-mode hint, clicking the `Counter` button resolves the
+`Counter` component and renders a path string with source line numbers
+(`<button> · Counter · Counter.vue:8:col-10:col`), a screenshot of the picked element renders as a
+`blob:` image, clicking the path copies it to the clipboard, clicking the screenshot copies a PNG
+to the clipboard, picking a different element while the panel is open replaces the selection,
+Escape closes the panel, and a dragged panel position is saved to `localStorage` and restored on
+reopen/reload. Edge cases — re-pick while open, corrupt `localStorage` falling back to a default
+position, and a prod `vite build` not injecting the overlay — are each a separate `check(...)`
+block; see the `edge:*` / `prod` labels in the script.

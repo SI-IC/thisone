@@ -1,59 +1,50 @@
-# claude-feedback
+# vite-plugin-pick-element
 
-Send **element-anchored feedback** from a live Vue 3 + Vite dev preview straight to Claude Code. Press **Alt+C** in the preview, optionally pick an element, type what you want changed, and send. Along with your message Claude receives the page URL, a descriptor of the picked element (tag/classes/selector plus its start/end line and column in the `.vue` source, when resolvable), its **Vue component** (name + `__file:line` + parent chain), and the recent **browser console**. On request Claude can also pull a snapshot of a Pinia store or component state.
+Pick a DOM element in a live Vue 3 + Vite dev preview and copy its **component path** (tag,
+component name, source file:line:col-line:col) or a **screenshot** straight to your clipboard.
+No server, no network, no external integration — everything happens in the page.
 
-Two cooperating artifacts live in this one public repo (`https://github.com/SI-IC/vue-pick-problem-skill`):
-
-- **Vite plugin** `vite-plugin-claude-feedback` (repo root) — injects the client overlay into dev pages and runs an in-process **bridge** (HTTP + WebSocket). Installed straight from GitHub, no npm-registry publish.
-- **Claude Code plugin** `claude-feedback` (`claude-plugin/`) — a stdio **MCP server**, a **SessionStart** hook that auto-wires the Vite plugin into your project, a skill, and the `/feedback*` commands. Shipped via the Claude Code marketplace.
-
-## Installation
-
-### Marketplace install
+## Install
 
 ```
-/plugin marketplace add SI-IC/vue-pick-problem-skill
-/plugin install claude-feedback@vue-pick-problem-skill
+pnpm add -D github:SI-IC/vue-pick-problem-skill
+
 ```
 
-### Conveyor install
+(No npm-registry publish — install straight from GitHub. The built `dist/` is committed to the
+repo, so no build toolchain is required on install.)
 
-Add `claude-feedback` via the plugin library (`/plugins`); per-project override, then it installs on container start.
+Add it to `vite.config.ts`:
 
-### What happens automatically
+```ts
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import pickElement from "vite-plugin-pick-element";
 
-On the **next session start** after enabling, the plugin's SessionStart hook runs `wire.mjs`, which idempotently:
+export default defineConfig({
+  plugins: [vue(), pickElement()],
+});
+```
 
-1. Detects the project (`vue` + `vite` in `package.json` / `vite.config.*`). No-op with a logged note otherwise.
-2. If not already wired, installs the Vite plugin from GitHub at its latest tag (falls back across `pnpm` / `npm` / `yarn` by lockfile).
-3. Patches `vite.config` to add `import claudeFeedback from 'vite-plugin-claude-feedback'` and `claudeFeedback()` into `plugins: []`.
-4. If already wired, a fast no-op (no network).
-
-The one-time install cost happens only on the first session after enable; later starts are cheap no-ops.
-
-### Manual fallbacks
-
-- `/feedback:setup` — runs the same `wire.mjs` on demand (re-runs, or when the hook was skipped). If already wired, checks the pinned GitHub tag against the latest release and reinstalls when it's behind — the SessionStart hook itself never does this network check, so it stays a cheap no-op on every other start.
-- `/feedback:remove` — unwires: reverts the `vite.config` patch and removes the dependency. (Auto-remove is intentionally not done.)
+`pickElement({ hotkey: "KeyC" })` — override the hotkey code that combines with **Alt** to open
+the picker (default `KeyC`, i.e. **Alt+C**).
 
 ## Usage
 
 1. Run your Vue+Vite dev server and open the preview.
-2. Press **Alt+C** to open the feedback overlay.
-3. Optionally click **Pick element** and select the element you mean.
-4. Type your feedback and **Send**.
-5. In Claude Code, the `claude-feedback` skill pulls queued feedback with the `get_feedback` MCP tool and can request store/component/console snapshots.
+2. Press **Alt+C** — a small panel opens: "Выберите элемент".
+3. Click any element on the page. The panel shows its path (tag, Vue component name, and the
+   source file:line:col-line:col when resolvable) and a screenshot of the element with 30px of
+   real surrounding page content padded on each side.
+4. Click the path text to copy it, or the screenshot to copy the PNG — either shows "Скопировано"
+   next to what you clicked.
+5. Click a different element while the panel is open to replace the selection. Drag the panel by
+   its header to reposition it — the position is remembered (`localStorage`) across reloads.
+6. Close with the **×** button or **Escape**.
 
-See `docs/superpowers/specs/2026-06-26-vite-plugin-claude-feedback-design.md` for the full design, the context payload shape, and the MCP tool list.
+The plugin is disabled for production builds (`vite build`) — nothing it injects ships to users.
 
-### Known limitation: HMR on every save
-
-The plugin stamps a `data-src-loc` attribute into each `.vue` file's template source before
-`@vitejs/plugin-vue` compiles it (see `docs/superpowers/specs/2026-08-06-element-source-location-design.md`).
-Vite's own hot-update path re-reads the file straight from disk and diffs it against the
-previously compiled (already-stamped) version, so it always sees the template as "changed" —
-every save re-renders the component, even when you only touched `<script>`/`<style>`. This is a
-dev-only cosmetic trade-off, not a functional bug.
+See `docs/superpowers/specs/2026-08-06-pick-element-design.md` for the full design.
 
 ## Development
 
@@ -61,11 +52,12 @@ dev-only cosmetic trade-off, not a functional bug.
 pnpm install
 pnpm build        # -> dist/{index.js, client.js, index.d.ts}
 pnpm test:run     # unit tests
-pnpm check:versions
 bash scripts/e2e.sh   # full e2e against examples/demo-app (see tests/e2e/README.md)
 ```
 
-Versioning is automatic: a husky `pre-commit` hook bumps the patch version, syncs it across the package, the CC-plugin manifest, and the marketplace entry, rebuilds `dist/`, and stages it; a `post-commit` hook tags `v<version>`. For a larger bump run `pnpm release minor` (or `major`) before committing. The built `dist/` is committed on purpose so a GitHub install needs no build toolchain.
+Versioning is automatic: a husky `pre-commit` hook bumps the patch version, rebuilds `dist/`, and
+stages it when `src/` changes; a `post-commit` hook tags `v<version>`. For a larger bump run
+`pnpm release minor` (or `major`) before committing.
 
 ## License
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Build the two artifacts that downstream phases depend on:
-//   dist/index.js    — Vite plugin, ESM, platform node (deps like `ws` bundled in)
+//   dist/index.js    — Vite plugin, ESM, platform node
 //   dist/client.js   — browser overlay bundle, IIFE, inlined into dev HTML
 //   dist/index.d.ts  — plugin type declarations (via tsc)
 //
@@ -14,7 +14,6 @@ import { execFileSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
-  readFileSync,
   realpathSync,
   renameSync,
   rmSync,
@@ -31,7 +30,6 @@ export async function main() {
   mkdirSync(dist, { recursive: true });
 
   // (a) Vite plugin — ESM for Node. Node builtins stay external automatically;
-  // runtime deps (ws) get bundled so a github-install needs no toolchain.
   await build({
     entryPoints: [resolve(root, "src/plugin/index.ts")],
     outfile: resolve(dist, "index.js"),
@@ -42,13 +40,6 @@ export async function main() {
     sourcemap: false,
     // Не менять, потому что бандлинг @vue/compiler-sfc падает на его опциональных template-engine require().
     external: PLUGIN_BUNDLE_EXTERNAL,
-    // The plugin now bundles the bridge, which bundles `ws`. ws require()s node
-    // builtins; esbuild's ESM output routes those through a __require shim that
-    // throws ("Dynamic require of events") unless a real `require` exists. Define
-    // one via createRequire so the shim picks it up (Phase 2 journal grabli).
-    banner: {
-      js: "import { createRequire as __cr } from 'module'; const require = __cr(import.meta.url);",
-    },
   });
 
   // (b) Client overlay — single IIFE bundle inlined into dev pages.
@@ -62,11 +53,7 @@ export async function main() {
     sourcemap: false,
   });
 
-  // (c) Type declarations. The plugin now imports from ../server, so the dts
-  // program spans src/{plugin,server}; rootDir is "src" and tsc mirrors the tree
-  // under dist/. Relocate the one file we ship (dist/plugin/index.d.ts) to
-  // dist/index.d.ts and drop the rest — the public type surface references no
-  // server types, so the relocated declaration stays self-contained.
+  // Не менять, потому что tsconfig.dts.json include=["src/plugin/index.ts"] -> tsc emits only dist/plugin/index.d.ts, which the relocation below expects
   execFileSync(
     process.execPath,
     [
@@ -82,35 +69,9 @@ export async function main() {
     throw new Error("dts emit missing expected dist/plugin/index.d.ts");
   }
   renameSync(emitted, resolve(dist, "index.d.ts"));
-  for (const dir of ["plugin", "server", "client"]) {
-    rmSync(resolve(dist, dir), { recursive: true, force: true });
-  }
+  rmSync(resolve(dist, "plugin"), { recursive: true, force: true });
 
-  await build({
-    entryPoints: [resolve(root, "claude-plugin/mcp-server.mjs")],
-    outfile: resolve(root, "claude-plugin/mcp-server.bundled.mjs"),
-    bundle: true,
-    format: "esm",
-    platform: "node",
-    target: "node18",
-    sourcemap: false,
-    banner: {
-      js: "import { createRequire as __cr } from 'module'; const require = __cr(import.meta.url);",
-    },
-  });
-  if (
-    readFileSync(resolve(root, "claude-plugin/mcp-server.bundled.mjs"), "utf8")
-      .split("\n")
-      .some((l) => /^import .*["']@modelcontextprotocol\/sdk/.test(l))
-  ) {
-    throw new Error(
-      "mcp-server.bundled.mjs still imports @modelcontextprotocol/sdk as a bare specifier — bundling failed",
-    );
-  }
-
-  console.log(
-    "build ok: dist/{index.js,client.js,index.d.ts}, claude-plugin/mcp-server.bundled.mjs",
-  );
+  console.log("build ok: dist/{index.js,client.js,index.d.ts}");
 }
 
 export function isMainModule(moduleUrl, argvPath) {

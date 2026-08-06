@@ -3,11 +3,27 @@
 // (`el.__vueParentComponent`, `type.__file`) and degrades to null/anonymous when
 // they are absent (element outside the app, production build without `__file`).
 
-import type {
-  ComponentDescriptor,
-  ElementDescriptor,
-  SourceLocation,
-} from "../server/types";
+export interface SourceLocation {
+  file: string;
+  startLine: number;
+  startColumn: number;
+  endLine: number;
+  endColumn: number;
+}
+
+export interface ElementDescriptor {
+  tag: string;
+  classes: string[];
+  text: string;
+  selector: string;
+  sourceLoc: SourceLocation | null;
+}
+
+export interface ComponentDescriptor {
+  name: string;
+  file: string | null;
+  chain: string[];
+}
 
 export type ResolvedComponent = ComponentDescriptor;
 
@@ -106,4 +122,21 @@ export function describeElement(el: Element): ElementDescriptor {
     selector: cssPath(el),
     sourceLoc: parseSourceLoc(el.getAttribute("data-src-loc")),
   };
+}
+
+/**
+ * Formats element to `<tag> · ComponentName · file:startLine:startCol-endLine:endCol`.
+ * @param el - DOM element to format
+ * @returns formatted path text, degrades gracefully when sourceLoc or component is unavailable
+ */
+export function formatElementPath(el: Element): string {
+  const d = describeElement(el);
+  const c = resolveComponent(el);
+  const tag = `<${d.tag}>`;
+  if (!c) return `${tag} · ${d.selector}`;
+  if (d.sourceLoc) {
+    const l = d.sourceLoc;
+    return `${tag} · ${c.name} · ${l.file}:${l.startLine}:${l.startColumn}-${l.endLine}:${l.endColumn}`;
+  }
+  return c.file ? `${tag} · ${c.name} (${c.file})` : `${tag} · ${c.name}`;
 }

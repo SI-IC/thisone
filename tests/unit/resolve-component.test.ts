@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import {
   resolveComponent,
   describeElement,
+  formatElementPath,
 } from "../../src/client/resolve-component";
 
 function inst(type: any, parent: any = null): any {
@@ -113,5 +114,45 @@ describe("describeElement", () => {
     document.body.innerHTML = '<div data-src-loc="garbage">hi</div>';
     const d = describeElement(document.querySelector("div")!);
     expect(d.sourceLoc).toBeNull();
+  });
+});
+
+describe("formatElementPath", () => {
+  it("formats tag, component name, and source line/column range", () => {
+    document.body.innerHTML =
+      '<div data-src-loc="/proj/src/components/Counter.vue:12:3-14:9"></div>';
+    const el = document.querySelector("div")!;
+    (el as any).__vueParentComponent = {
+      type: { __file: "/proj/src/components/Counter.vue", name: "Counter" },
+      parent: null,
+    };
+    expect(formatElementPath(el)).toBe(
+      "<div> · Counter · /proj/src/components/Counter.vue:12:3-14:9",
+    );
+  });
+
+  it("omits line numbers when data-src-loc is absent (no sourceLoc)", () => {
+    document.body.innerHTML = "<span></span>";
+    const el = document.querySelector("span")!;
+    (el as any).__vueParentComponent = {
+      type: { __file: "/proj/src/Widget.vue", name: "Widget" },
+      parent: null,
+    };
+    expect(formatElementPath(el)).toBe(
+      "<span> · Widget (/proj/src/Widget.vue)",
+    );
+  });
+
+  it("omits the file suffix when the component has no __file", () => {
+    document.body.innerHTML = "<i></i>";
+    const el = document.querySelector("i")!;
+    (el as any).__vueParentComponent = { type: { name: "Anon" }, parent: null };
+    expect(formatElementPath(el)).toBe("<i> · Anon");
+  });
+
+  it("falls back to the CSS selector outside the Vue app (no component)", () => {
+    document.body.innerHTML = '<main><button id="go"></button></main>';
+    const el = document.getElementById("go")!;
+    expect(formatElementPath(el)).toBe("<button> · #go");
   });
 });
