@@ -239,6 +239,13 @@ describe("formatElementPathFromRoot", () => {
       "App (/src/App.tsx) › Counter (/src/components/Counter.tsx) › <button>",
     );
   });
+
+  it("agrees with formatElementPath's Anonymous fallback when a React fiber chain has no component-typed ancestor", () => {
+    const el = document.createElement("span");
+    (el as any).__reactFiber$anon = { type: "span", return: null };
+    expect(formatElementPath(el)).toBe("<span> · Anonymous");
+    expect(formatElementPathFromRoot(el)).toBe("Anonymous › <span>");
+  });
 });
 
 describe("resolveComponent dispatcher", () => {

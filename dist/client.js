@@ -177,8 +177,9 @@
     const d = describeElement(el);
     const c = resolveComponent(el);
     const tag = `<${d.tag}>`;
-    if (!c || c.chain.length === 0) return `${tag} \xB7 ${d.selector}`;
-    const breadcrumb = [...c.chain].reverse().map((entry) => entry.file ? `${entry.name} (${entry.file})` : entry.name).join(" \u203A ");
+    if (!c) return `${tag} \xB7 ${d.selector}`;
+    const entries = c.chain.length > 0 ? c.chain : [{ name: c.name, file: c.file }];
+    const breadcrumb = [...entries].reverse().map((entry) => entry.file ? `${entry.name} (${entry.file})` : entry.name).join(" \u203A ");
     if (d.sourceLoc) {
       const l = d.sourceLoc;
       return `${breadcrumb} \u203A ${tag} ${l.startLine}:${l.startColumn}-${l.endLine}:${l.endColumn}`;

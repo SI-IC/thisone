@@ -161,9 +161,11 @@ export function formatElementPathFromRoot(el: Element): string {
   const d = describeElement(el);
   const c = resolveComponent(el);
   const tag = `<${d.tag}>`;
-  if (!c || c.chain.length === 0) return `${tag} · ${d.selector}`;
+  if (!c) return `${tag} · ${d.selector}`;
 
-  const breadcrumb = [...c.chain]
+  const entries: ChainEntry[] =
+    c.chain.length > 0 ? c.chain : [{ name: c.name, file: c.file }];
+  const breadcrumb = [...entries]
     .reverse()
     .map((entry) => (entry.file ? `${entry.name} (${entry.file})` : entry.name))
     .join(" › ");
