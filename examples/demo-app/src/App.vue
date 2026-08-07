@@ -13,7 +13,12 @@ import Counter from "./components/Counter.vue";
 :root {
   color-scheme: light;
   font-family:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
 }
 
 body {

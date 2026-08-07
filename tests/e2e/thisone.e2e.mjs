@@ -11,10 +11,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const demoDir = resolve(here, "../../examples/demo-app");
 
 const port = Number(process.argv[2]);
-assert.ok(
-  Number.isInteger(port) && port > 0,
-  "usage: thisone.e2e.mjs <port>",
-);
+assert.ok(Number.isInteger(port) && port > 0, "usage: thisone.e2e.mjs <port>");
 const base = `http://localhost:${port}`;
 
 const errors = [];
@@ -302,9 +299,7 @@ try {
     },
   );
 
-  const targetToggle = page.locator(
-    "#__thisone_root >> css=.target-toggle",
-  );
+  const targetToggle = page.locator("#__thisone_root >> css=.target-toggle");
   const targetBtn = page.locator("#__thisone_root >> css=.target-btn");
 
   await check(

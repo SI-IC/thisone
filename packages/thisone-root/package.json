@@ -1,0 +1,20 @@
+{
+  "name": "thisone",
+  "version": "0.0.1",
+  "description": "Brand root for thisone — the released plugin lives in vite-plugin-thisone.",
+  "license": "MIT",
+  "author": "SI-IC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SI-IC/thisone.git"
+  },
+  "keywords": [
+    "thisone",
+    "ai",
+    "agent",
+    "devtools"
+  ],
+  "files": [
+    "README.md"
+  ]
+}
