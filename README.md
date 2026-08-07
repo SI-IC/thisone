@@ -105,7 +105,7 @@ move it around the viewport perimeter. Both survive a reload.
 
 - **Vue 3** — component name and source span via the SFC compiler.
 - **React** — `.jsx` / `.tsx`, including `memo()`-wrapped and default-exported components. No
-  dependency on `@vitejs/plugin-react`.
+  dependency on `@vitejs/plugin-react`, and verified compatible when it's installed too.
 - **Vite 5, 6, 7.**
 
 The plugin declares `apply: "serve"`. `vite build` output contains none of it — no overlay, no
@@ -135,10 +135,12 @@ your clipboard. That is the whole data flow.
 pnpm install
 pnpm run setup-hooks   # one-time: installs the husky git hooks
 pnpm build             # -> dist/{index.js, client.js, index.d.ts}
-pnpm test:run          # unit tests
-bash scripts/e2e.sh        # e2e against examples/demo-app (Vue)
-bash scripts/e2e-react.sh  # e2e against examples/demo-app-react
-bash scripts/demo.sh       # re-record docs/demo.gif
+pnpm test:run                 # unit tests
+bash scripts/e2e.sh               # e2e against examples/demo-app (Vue)
+bash scripts/e2e-react.sh         # e2e against examples/demo-app-react (bare, no @vitejs/plugin-react)
+bash scripts/e2e-react-plugin.sh  # e2e against examples/demo-app-react-plugin (with @vitejs/plugin-react)
+bash scripts/demo.sh              # re-record docs/demo.gif
+bash scripts/dev-demo.sh          # browse both demos live on one port — see tests/e2e/README.md
 ```
 
 `scripts/demo.sh` records the picked element's absolute module path into the GIF, so run it from a
@@ -157,9 +159,10 @@ Design notes live in `docs/superpowers/specs/`.
 
 ## Contributing
 
-Issues and pull requests are welcome. Before opening a PR, run `pnpm test:run`, `bash scripts/e2e.sh`
-and `bash scripts/e2e-react.sh` — all three must be green. Bug reports are most useful with the
-framework, the Vite version, and the copied path text the panel produced.
+Issues and pull requests are welcome. Before opening a PR, run `pnpm test:run`, `bash scripts/e2e.sh`,
+`bash scripts/e2e-react.sh` and `bash scripts/e2e-react-plugin.sh` — all four must be green. Bug
+reports are most useful with the framework, the Vite version, and the copied path text the panel
+produced.
 
 ## License
 

@@ -186,7 +186,7 @@ try {
       const text = await pathEl.textContent();
       assert.doesNotMatch(text ?? "", /button/);
       assert.match(text ?? "", /<h1>/);
-      assert.match(text ?? "", /App\.vue:7:/);
+      assert.match(text ?? "", /App\.vue:9:/);
     },
   );
 

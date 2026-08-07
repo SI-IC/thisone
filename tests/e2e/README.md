@@ -60,3 +60,29 @@ bash scripts/e2e-react.sh
 ```
 
 Same `link:../..` wiring note as the Vue demo app applies to `examples/demo-app-react`.
+
+## React + `@vitejs/plugin-react` harness
+
+`thisone-react-plugin.e2e.mjs` runs the same three checks (function component, `memo()`-wrapped
+component, prod-build exclusion) against a **second** React app,
+`examples/demo-app-react-plugin/`, that _does_ install and enable `@vitejs/plugin-react`. thisone's
+plugin runs `enforce: "pre"`, so it walks the raw JSX before `@vitejs/plugin-react`'s own
+Babel/Fast-Refresh transform ever sees the file — this harness is what proves that ordering holds
+and that `data-src-loc` / `__file`/`__name` survive Fast Refresh's own component registration
+untouched. `examples/demo-app-react` stays plugin-free on purpose (see above), so this is a
+separate fixture rather than a flag on the existing one.
+
+Run:
+
+```
+bash scripts/e2e-react-plugin.sh
+```
+
+## Browsing both demos live
+
+`scripts/dev-demo.sh` fronts `examples/demo-app` (Vue) and `examples/demo-app-react` (React) with
+a single dev server on port 3000: the Vue app proxies `/react-demo/**` (including the HMR
+websocket) to a second, loopback-only Vite instance serving the React app under that base path.
+Each app's header has a Vue/React nav link to switch between them without touching the URL bar's
+port. Only used for manually poking at the picker in a browser — not part of any e2e/unit
+suite.

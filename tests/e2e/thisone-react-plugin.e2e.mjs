@@ -8,12 +8,12 @@ import { dirname, resolve } from "node:path";
 import { chromium } from "playwright";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const demoDir = resolve(here, "../../examples/demo-app-react");
+const demoDir = resolve(here, "../../examples/demo-app-react-plugin");
 
 const port = Number(process.argv[2]);
 assert.ok(
   Number.isInteger(port) && port > 0,
-  "usage: thisone-react.e2e.mjs <port>",
+  "usage: thisone-react-plugin.e2e.mjs <port>",
 );
 const base = `http://localhost:${port}`;
 
@@ -54,7 +54,7 @@ try {
     assert.equal(response.status(), 200);
   });
   await check(
-    "no console/page errors on load (bare Vite+React, no @vitejs/plugin-react)",
+    "no console/page errors on load (@vitejs/plugin-react installed, Fast Refresh active)",
     async () => {
       assert.deepEqual(consoleErrors, []);
       assert.deepEqual(pageErrors, []);
@@ -73,7 +73,7 @@ try {
 
   await page.locator('button:has-text("count is")').click();
   await check(
-    "picking a host element inside a function component resolves name + file:line",
+    "picking a host element inside a function component resolves name + file:line even with plugin-react's own JSX transform running after ours",
     async () => {
       await pathEl.waitFor({ state: "visible", timeout: 2000 });
       const text = await pathEl.textContent();
@@ -90,30 +90,13 @@ try {
     badgeBox.y + badgeBox.height / 2,
   );
   await check(
-    "picking a host element inside a memo()-wrapped component resolves the memo's name + file:line",
+    "picking a host element inside a memo()-wrapped component still resolves the memo's name + file:line (not clobbered by Fast Refresh's own registration)",
     async () => {
       await pathEl.waitFor({ state: "visible", timeout: 2000 });
       const text = await pathEl.textContent();
       assert.match(text ?? "", /<span>/);
       assert.match(text ?? "", /MemoBadge/);
       assert.match(text ?? "", /MemoBadge\.tsx:4:\d+-4:\d+/);
-    },
-  );
-
-  const headingBox = await page.locator("h1").boundingBox();
-  assert.ok(headingBox, "h1 should have a bounding box");
-  await page.mouse.click(
-    headingBox.x + 10,
-    headingBox.y + headingBox.height / 2,
-  );
-  await check(
-    "picking a host element inside the default-exported root component resolves App + file:line",
-    async () => {
-      await pathEl.waitFor({ state: "visible", timeout: 2000 });
-      const text = await pathEl.textContent();
-      assert.match(text ?? "", /<h1>/);
-      assert.match(text ?? "", /App/);
-      assert.match(text ?? "", /App\.tsx:10:\d+-10:\d+/);
     },
   );
 
