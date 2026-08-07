@@ -173,13 +173,28 @@
     }
     return c.file ? `${tag} \xB7 ${c.name} (${c.file})` : `${tag} \xB7 ${c.name}`;
   }
+  function collapseConsecutive(entries) {
+    const labels = [];
+    let i = 0;
+    while (i < entries.length) {
+      const entry = entries[i];
+      let count = 1;
+      while (i + count < entries.length && entries[i + count].name === entry.name && entries[i + count].file === entry.file) {
+        count++;
+      }
+      const name = count > 1 ? `${entry.name} \xD7${count}` : entry.name;
+      labels.push(entry.file ? `${name} (${entry.file})` : name);
+      i += count;
+    }
+    return labels;
+  }
   function formatElementPathFromRoot(el) {
     const d = describeElement(el);
     const c = resolveComponent(el);
     const tag = `<${d.tag}>`;
     if (!c) return `${tag} \xB7 ${d.selector}`;
     const entries = c.chain.length > 0 ? c.chain : [{ name: c.name, file: c.file }];
-    const breadcrumb = [...entries].reverse().map((entry) => entry.file ? `${entry.name} (${entry.file})` : entry.name).join(" \u203A ");
+    const breadcrumb = collapseConsecutive([...entries].reverse()).join(" \u203A ");
     if (d.sourceLoc) {
       const l = d.sourceLoc;
       return `${breadcrumb} \u203A ${tag} ${l.startLine}:${l.startColumn}-${l.endLine}:${l.endColumn}`;

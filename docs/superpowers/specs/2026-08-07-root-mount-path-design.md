@@ -87,6 +87,10 @@ separate "compact UI" / "verbose copy" split.
 - Ancestor with no `__file` (anonymous functional component, HOC wrapper) → rendered as bare
   `Name` (no parens) in the breadcrumb, chain walk continues past it to deeper ancestors as
   before.
+- Consecutive identical ancestors (recursive components — trees, menus, comment threads)
+  collapse into a single `Name ×N (file)` entry instead of repeating the same `Name (file)`
+  segment N times; non-consecutive repeats of the same component elsewhere in the chain are
+  left alone. Single occurrences are never suffixed with `×1`.
 - `localStorage` unavailable/throws (private browsing, disabled storage) → `loadPathMode`
   swallows and returns the `"tree"` default, `savePathMode` swallows silently — same behavior
   already established by `target-store.ts`.

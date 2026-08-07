@@ -246,6 +246,50 @@ describe("formatElementPathFromRoot", () => {
     expect(formatElementPath(el)).toBe("<span> · Anonymous");
     expect(formatElementPathFromRoot(el)).toBe("Anonymous › <span>");
   });
+
+  it("collapses consecutive identical ancestors (recursive component) into a single Name ×N entry", () => {
+    document.body.innerHTML = "<li></li>";
+    const el = document.querySelector("li")!;
+    const app = { type: { __file: "/src/App.vue", name: "App" }, parent: null };
+    const node3 = {
+      type: { __file: "/src/TreeNode.vue", name: "TreeNode" },
+      parent: app,
+    };
+    const node2 = {
+      type: { __file: "/src/TreeNode.vue", name: "TreeNode" },
+      parent: node3,
+    };
+    const node1 = {
+      type: { __file: "/src/TreeNode.vue", name: "TreeNode" },
+      parent: node2,
+    };
+    (el as any).__vueParentComponent = node1;
+    expect(formatElementPathFromRoot(el)).toBe(
+      "App (/src/App.vue) › TreeNode ×3 (/src/TreeNode.vue) › <li>",
+    );
+  });
+
+  it("does not collapse the same component name/file appearing non-consecutively in the chain", () => {
+    document.body.innerHTML = "<span></span>";
+    const el = document.querySelector("span")!;
+    const app = { type: { __file: "/src/App.vue", name: "App" }, parent: null };
+    const b = { type: { __file: "/src/B.vue", name: "B" }, parent: app };
+    const aAgain = { type: { __file: "/src/App.vue", name: "App" }, parent: b };
+    (el as any).__vueParentComponent = aAgain;
+    expect(formatElementPathFromRoot(el)).toBe(
+      "App (/src/App.vue) › B (/src/B.vue) › App (/src/App.vue) › <span>",
+    );
+  });
+
+  it("keeps a single-occurrence entry unsuffixed (no ×1)", () => {
+    document.body.innerHTML = "<i></i>";
+    const el = document.querySelector("i")!;
+    (el as any).__vueParentComponent = {
+      type: { __file: "/proj/src/App.vue", name: "App" },
+      parent: null,
+    };
+    expect(formatElementPathFromRoot(el)).not.toContain("×1");
+  });
 });
 
 describe("resolveComponent dispatcher", () => {

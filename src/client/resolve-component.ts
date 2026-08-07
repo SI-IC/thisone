@@ -149,11 +149,33 @@ export function formatElementPath(el: Element): string {
   return c.file ? `${tag} · ${c.name} (${c.file})` : `${tag} · ${c.name}`;
 }
 
+function collapseConsecutive(entries: ChainEntry[]): string[] {
+  const labels: string[] = [];
+  let i = 0;
+  while (i < entries.length) {
+    const entry = entries[i];
+    let count = 1;
+    while (
+      i + count < entries.length &&
+      entries[i + count].name === entry.name &&
+      entries[i + count].file === entry.file
+    ) {
+      count++;
+    }
+    const name = count > 1 ? `${entry.name} ×${count}` : entry.name;
+    labels.push(entry.file ? `${name} (${entry.file})` : name);
+    i += count;
+  }
+  return labels;
+}
+
 /**
  * Formats the element's component chain from the root component down to the
  * picked element: `Name (file) › ... › <tag> startLine:startCol-endLine:endCol`.
- * Ancestors without a resolvable `__file` render as a bare name. Falls back to
- * the same CSS-selector format as `formatElementPath` when no component resolves.
+ * Ancestors without a resolvable `__file` render as a bare name. Consecutive
+ * identical ancestors (recursive components) collapse into `Name ×N (file)`.
+ * Falls back to the same CSS-selector format as `formatElementPath` when no
+ * component resolves.
  * @param el - DOM element to format
  * @returns root-to-leaf breadcrumb text
  */
@@ -165,10 +187,7 @@ export function formatElementPathFromRoot(el: Element): string {
 
   const entries: ChainEntry[] =
     c.chain.length > 0 ? c.chain : [{ name: c.name, file: c.file }];
-  const breadcrumb = [...entries]
-    .reverse()
-    .map((entry) => (entry.file ? `${entry.name} (${entry.file})` : entry.name))
-    .join(" › ");
+  const breadcrumb = collapseConsecutive([...entries].reverse()).join(" › ");
 
   if (d.sourceLoc) {
     const l = d.sourceLoc;
