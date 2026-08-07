@@ -75,6 +75,49 @@
     return { name: resolvedName, file: resolvedFile, chain };
   }
 
+  // src/client/resolve-component-preact.ts
+  function preactComponentName(type) {
+    if (type == null ? void 0 : type.displayName) return String(type.displayName);
+    if (type == null ? void 0 : type.name) return String(type.name);
+    if (type == null ? void 0 : type.__name) return String(type.__name);
+    if (type == null ? void 0 : type.__file) return baseName(String(type.__file));
+    return "Anonymous";
+  }
+  function isComponentVnodeType(type) {
+    return typeof type === "function";
+  }
+  function resolvePreactComponent(el) {
+    var _a2, _b;
+    if (!el) return null;
+    const map = window.__THISONE_PREACT_MAP__;
+    if (!map) return null;
+    const start = map.get(el);
+    if (!start) return null;
+    const chain = [];
+    let resolvedName = null;
+    let resolvedFile = null;
+    let cur = start;
+    let guard = 0;
+    while (cur && guard++ < 1e3) {
+      const type = cur.type;
+      if (isComponentVnodeType(type)) {
+        const name = preactComponentName(type);
+        const file = (type == null ? void 0 : type.__file) ? String(type.__file) : null;
+        chain.push({ name, file });
+        if (!resolvedName && file) {
+          resolvedName = name;
+          resolvedFile = file;
+        }
+      }
+      cur = cur._parent;
+    }
+    if (!resolvedName) {
+      resolvedName = (_b = (_a2 = chain[0]) == null ? void 0 : _a2.name) != null ? _b : "Anonymous";
+      resolvedFile = null;
+    }
+    return { name: resolvedName, file: resolvedFile, chain };
+  }
+
   // src/client/resolve-component.ts
   function componentName(instance) {
     var _a2;
@@ -87,7 +130,9 @@
   function resolveComponent(el) {
     if (!el) return null;
     if (el.__vueParentComponent) return resolveVueComponent(el);
-    return resolveReactComponent(el);
+    const react = resolveReactComponent(el);
+    if (react) return react;
+    return resolvePreactComponent(el);
   }
   function resolveVueComponent(el) {
     var _a2, _b, _c;
