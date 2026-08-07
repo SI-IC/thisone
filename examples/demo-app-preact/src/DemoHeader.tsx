@@ -1,7 +1,7 @@
 export default function DemoHeader({
   active,
 }: {
-  active: "vue" | "react" | "preact";
+  active: "vue" | "react" | "preact" | "svelte";
 }) {
   return (
     <header className="demo-header">
@@ -20,6 +20,12 @@ export default function DemoHeader({
           className={active === "preact" ? "active" : undefined}
         >
           Preact
+        </a>
+        <a
+          href="/svelte-demo/"
+          className={active === "svelte" ? "active" : undefined}
+        >
+          Svelte
         </a>
       </nav>
     </header>
