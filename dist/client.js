@@ -119,6 +119,28 @@
     return { name: resolvedName, file: resolvedFile, chain };
   }
 
+  // src/client/resolve-component-svelte.ts
+  function resolveSvelteComponent(el) {
+    var _a2;
+    if (!el) return null;
+    const meta = el.__svelte_meta;
+    if (!meta) return null;
+    const chain = [];
+    let childFile = meta.loc.file;
+    let cur = meta.parent;
+    let guard = 0;
+    while (cur && guard++ < 1e3) {
+      if (cur.type === "component") {
+        const name = (_a2 = cur.componentTag) != null ? _a2 : baseName(childFile);
+        chain.push({ name, file: childFile });
+        childFile = cur.file;
+      }
+      cur = cur.parent;
+    }
+    chain.push({ name: baseName(childFile), file: childFile });
+    return { name: chain[0].name, file: chain[0].file, chain };
+  }
+
   // src/client/resolve-component.ts
   function componentName(instance) {
     var _a2;
@@ -133,7 +155,9 @@
     if (el.__vueParentComponent) return resolveVueComponent(el);
     const react = resolveReactComponent(el);
     if (react) return react;
-    return resolvePreactComponent(el);
+    const preact = resolvePreactComponent(el);
+    if (preact) return preact;
+    return resolveSvelteComponent(el);
   }
   function resolveVueComponent(el) {
     var _a2, _b, _c;
