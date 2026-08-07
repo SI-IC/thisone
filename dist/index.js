@@ -39219,6 +39219,7 @@ traverse3.cache = cache;
 var traverse4 = traverse3.default ?? traverse3;
 var generate2 = generate.default ?? generate;
 var HOC_NAMES = /* @__PURE__ */ new Set(["memo", "forwardRef"]);
+var HOC_IMPORT_SOURCES = /* @__PURE__ */ new Set(["react", "preact/compat"]);
 function isPascalCase(name) {
   return /^[A-Z]/.test(name);
 }
@@ -39226,7 +39227,7 @@ function collectReactAliases(programNode) {
   const hocLocalNames = /* @__PURE__ */ new Map();
   const namespaceLocalNames = /* @__PURE__ */ new Set();
   for (const stmt of programNode.body) {
-    if (!isImportDeclaration(stmt) || stmt.source.value !== "react") {
+    if (!isImportDeclaration(stmt) || !HOC_IMPORT_SOURCES.has(String(stmt.source.value))) {
       continue;
     }
     for (const spec of stmt.specifiers) {
@@ -39371,6 +39372,21 @@ function injectSourceLocations2(source, relFile) {
   }
 }
 
+// src/plugin/preact-hook.ts
+var PREACT_HOOK_VIRTUAL_ID = "virtual:thisone-preact-hook";
+var PREACT_HOOK_RESOLVED_ID = "\0" + PREACT_HOOK_VIRTUAL_ID;
+var PREACT_HOOK_SOURCE = `
+import { options, Fragment } from "preact";
+var map = new WeakMap();
+var prevDiffed = options.diffed;
+options.diffed = function (vnode) {
+  if (vnode && vnode.__e) map.set(vnode.__e, vnode);
+  if (prevDiffed) prevDiffed(vnode);
+};
+window.__THISONE_PREACT_MAP__ = map;
+window.__THISONE_PREACT_FRAGMENT__ = Fragment;
+`;
+
 // src/plugin/index.ts
 var here = dirname(fileURLToPath(import.meta.url));
 function loadClientBundle() {
@@ -39389,12 +39405,25 @@ function thisone(options = {}) {
   const hotkey = options.hotkey ?? "KeyC";
   const cfgJson = JSON.stringify({ hotkey });
   let isBuild = false;
+  let hasPreact = false;
   return {
     name: "vite-plugin-thisone",
     apply: "serve",
     enforce: "pre",
     config(_config, env) {
       isBuild = env.command === "build";
+    },
+    configResolved(resolvedConfig) {
+      try {
+        const pkgPath = resolve3(resolvedConfig.root, "package.json");
+        if (!existsSync(pkgPath)) return;
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+        hasPreact = Boolean(
+          pkg?.dependencies?.preact || pkg?.devDependencies?.preact
+        );
+      } catch {
+        hasPreact = false;
+      }
     },
     transform(code2, id) {
       if (isBuild) return;
@@ -39404,22 +39433,34 @@ function thisone(options = {}) {
       }
       return;
     },
+    resolveId(id) {
+      if (id === PREACT_HOOK_VIRTUAL_ID) return PREACT_HOOK_RESOLVED_ID;
+    },
+    load(id) {
+      if (id === PREACT_HOOK_RESOLVED_ID) return PREACT_HOOK_SOURCE;
+    },
     transformIndexHtml: {
       order: "pre",
       handler(html) {
         if (isBuild) return html;
         const client = loadClientBundle();
-        return {
-          html,
-          tags: [
-            {
-              tag: "script",
-              injectTo: "body",
-              children: `window.__THISONE_CFG__=${cfgJson};
+        const tags = [
+          {
+            tag: "script",
+            injectTo: "body",
+            children: `window.__THISONE_CFG__=${cfgJson};
 ${client}`
-            }
-          ]
-        };
+          }
+        ];
+        if (hasPreact) {
+          tags.unshift({
+            tag: "script",
+            attrs: { type: "module" },
+            injectTo: "head-prepend",
+            children: `import "virtual:thisone-preact-hook";`
+          });
+        }
+        return { html, tags };
       }
     }
   };

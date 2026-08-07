@@ -7,6 +7,7 @@ const traverse: typeof _traverse = (_traverse as any).default ?? _traverse;
 const generate: typeof _generate = (_generate as any).default ?? _generate;
 
 const HOC_NAMES = new Set(["memo", "forwardRef"]);
+const HOC_IMPORT_SOURCES = new Set(["react", "preact/compat"]);
 
 function isPascalCase(name: string): boolean {
   return /^[A-Z]/.test(name);
@@ -21,7 +22,10 @@ function collectReactAliases(programNode: t.Program): ReactAliases {
   const hocLocalNames = new Map<string, string>();
   const namespaceLocalNames = new Set<string>();
   for (const stmt of programNode.body) {
-    if (!t.isImportDeclaration(stmt) || stmt.source.value !== "react") {
+    if (
+      !t.isImportDeclaration(stmt) ||
+      !HOC_IMPORT_SOURCES.has(String(stmt.source.value))
+    ) {
       continue;
     }
     for (const spec of stmt.specifiers) {

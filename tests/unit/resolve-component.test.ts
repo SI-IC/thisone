@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import {
   resolveComponent,
   describeElement,
@@ -319,5 +319,53 @@ describe("resolveComponent dispatcher", () => {
     };
     const r = resolveComponent(el)!;
     expect(r.name).toBe("VueWidget");
+  });
+});
+
+describe("resolveComponent dispatcher — Preact", () => {
+  afterEach(() => {
+    delete (window as any).__THISONE_PREACT_MAP__;
+  });
+
+  it("dispatches to the Preact resolver when the element is in window.__THISONE_PREACT_MAP__ (no Vue/React markers)", () => {
+    function Widget() {}
+    (Widget as any).__file = "/src/Widget.tsx";
+    const el = document.createElement("span");
+    const map = new WeakMap<Element, any>();
+    map.set(el, { type: Widget, __e: el, __: null });
+    (window as any).__THISONE_PREACT_MAP__ = map;
+
+    const r = resolveComponent(el)!;
+    expect(r.name).toBe("Widget");
+    expect(r.file).toBe("/src/Widget.tsx");
+  });
+
+  it("prefers the Vue resolver over the Preact map when both are present", () => {
+    const el = document.createElement("span");
+    (el as any).__vueParentComponent = {
+      type: { name: "VueWidget" },
+      parent: null,
+    };
+    const map = new WeakMap<Element, any>();
+    map.set(el, { type: function PreactWidget() {}, __e: el, __: null });
+    (window as any).__THISONE_PREACT_MAP__ = map;
+
+    expect(resolveComponent(el)!.name).toBe("VueWidget");
+  });
+
+  it("prefers the React resolver over the Preact map when both are present", () => {
+    function ReactWidget() {}
+    const el = document.createElement("span");
+    (el as any).__reactFiber$preacttest = { type: ReactWidget, return: null };
+    const map = new WeakMap<Element, any>();
+    map.set(el, { type: function PreactWidget() {}, __e: el, __: null });
+    (window as any).__THISONE_PREACT_MAP__ = map;
+
+    expect(resolveComponent(el)!.name).toBe("ReactWidget");
+  });
+
+  it("still returns null when no resolver claims the element", () => {
+    (window as any).__THISONE_PREACT_MAP__ = new WeakMap();
+    expect(resolveComponent(document.createElement("i"))).toBeNull();
   });
 });

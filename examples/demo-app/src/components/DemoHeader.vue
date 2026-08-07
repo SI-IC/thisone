@@ -1,5 +1,5 @@
 <script setup lang="ts">
-defineProps<{ active: "vue" | "react" }>();
+defineProps<{ active: "vue" | "react" | "preact" }>();
 </script>
 
 <template>
@@ -7,6 +7,9 @@ defineProps<{ active: "vue" | "react" }>();
     <nav>
       <a href="/" :class="{ active: active === 'vue' }">Vue</a>
       <a href="/react-demo/" :class="{ active: active === 'react' }">React</a>
+      <a href="/preact-demo/" :class="{ active: active === 'preact' }"
+        >Preact</a
+      >
     </nav>
   </header>
 </template>

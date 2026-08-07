@@ -221,3 +221,30 @@ describe("injectSourceLocations (React) — third-party / aliased HOCs", () => {
     expect(out).toMatch(/try\s*\{[\s\S]*Foo\.__file[\s\S]*\}\s*catch/);
   });
 });
+
+describe("injectSourceLocations (React) — preact/compat HOCs", () => {
+  it("recognizes memo/forwardRef imported from preact/compat", () => {
+    const src =
+      `import { memo, forwardRef } from "preact/compat";\n` +
+      `const Foo = memo(function Inner() {\n  return <div>hi</div>;\n});\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+    expect(out).not.toContain("Inner.__file");
+  });
+
+  it("recognizes an aliased preact/compat import (import { memo as m } from 'preact/compat')", () => {
+    const src =
+      `import { memo as m } from "preact/compat";\n` +
+      `const Foo = m(function Inner() {\n  return <div>hi</div>;\n});\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+  });
+
+  it("recognizes a namespace preact/compat import (import * as PreactCompat from 'preact/compat')", () => {
+    const src =
+      `import * as PreactCompat from "preact/compat";\n` +
+      `const Foo = PreactCompat.memo(function Inner() {\n  return <div>hi</div>;\n});\n`;
+    const out = injectSourceLocations(src, "/proj/Foo.tsx");
+    expect(out).toContain('Foo.__file = "/proj/Foo.tsx";');
+  });
+});
