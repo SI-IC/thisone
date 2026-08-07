@@ -155,6 +155,12 @@ recursively trigger `pnpm install` in their workspace root.
 
 Design notes live in `docs/superpowers/specs/`.
 
+## Contributing
+
+Issues and pull requests are welcome. Before opening a PR, run `pnpm test:run`, `bash scripts/e2e.sh`
+and `bash scripts/e2e-react.sh` — all three must be green. Bug reports are most useful with the
+framework, the Vite version, and the copied path text the panel produced.
+
 ## License
 
 MIT
