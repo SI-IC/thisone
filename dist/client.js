@@ -35,9 +35,9 @@
     if (inner) return reactComponentName(inner);
     return "Anonymous";
   }
-  function fileOf(type) {
-    var _a2, _b;
-    return (_b = type == null ? void 0 : type.__file) != null ? _b : (_a2 = innerTarget(type)) == null ? void 0 : _a2.__file;
+  function fileOf(type, elementType) {
+    var _a2, _b, _c, _d, _e;
+    return (_e = (_c = (_b = type == null ? void 0 : type.__file) != null ? _b : (_a2 = innerTarget(type)) == null ? void 0 : _a2.__file) != null ? _c : elementType == null ? void 0 : elementType.__file) != null ? _e : (_d = innerTarget(elementType)) == null ? void 0 : _d.__file;
   }
   function getReactFiberKey(el) {
     return Object.keys(el).find((k) => k.startsWith("__reactFiber$"));
@@ -58,7 +58,7 @@
       const type = cur.type;
       if (isComponentFiberType(type)) {
         const name = reactComponentName(type);
-        const rawFile = fileOf(type);
+        const rawFile = fileOf(type, cur.elementType);
         const file = rawFile ? String(rawFile) : null;
         chain.push({ name, file });
         if (!resolvedName && file) {

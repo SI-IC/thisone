@@ -100,6 +100,24 @@ describe("resolveReactComponent", () => {
     expect(r.chain).toEqual([{ name: "Counter", file: "/src/Counter.tsx" }]);
   });
 
+  it("finds statics via fiber.elementType when React unwraps a simple memo()'s type to the inner render function (SimpleMemoComponent)", () => {
+    function MemoBadge() {}
+    const memoWrapper: any = {
+      $$typeof: Symbol.for("react.memo"),
+      type: MemoBadge,
+      __file: "/src/MemoBadge.tsx",
+    };
+    const el = document.createElement("span");
+    (el as any).__reactFiber$k10 = {
+      type: MemoBadge,
+      elementType: memoWrapper,
+      return: null,
+    };
+    const r = resolveReactComponent(el)!;
+    expect(r.name).toBe("MemoBadge");
+    expect(r.file).toBe("/src/MemoBadge.tsx");
+  });
+
   it("includes a memo-wrapped component via its $$typeof tag and reads its statics", () => {
     const memoType: any = {
       $$typeof: Symbol.for("react.memo"),

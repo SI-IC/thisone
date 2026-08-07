@@ -32,8 +32,13 @@ export function reactComponentName(type: any): string {
   return "Anonymous";
 }
 
-function fileOf(type: any): string | undefined {
-  return type?.__file ?? innerTarget(type)?.__file;
+function fileOf(type: any, elementType?: any): string | undefined {
+  return (
+    type?.__file ??
+    innerTarget(type)?.__file ??
+    elementType?.__file ??
+    innerTarget(elementType)?.__file
+  );
 }
 
 export function getReactFiberKey(el: Element): string | undefined {
@@ -59,7 +64,7 @@ export function resolveReactComponent(
     const type = cur.type;
     if (isComponentFiberType(type)) {
       const name = reactComponentName(type);
-      const rawFile = fileOf(type);
+      const rawFile = fileOf(type, cur.elementType);
       const file = rawFile ? String(rawFile) : null;
       chain.push({ name, file });
       if (!resolvedName && file) {

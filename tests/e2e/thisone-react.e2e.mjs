@@ -63,6 +63,9 @@ try {
 
   const panel = page.locator("#__thisone_root >> css=.panel");
   const pathEl = page.locator("#__thisone_root >> css=.path");
+  const pathModeToggle = page.locator(
+    "#__thisone_root >> css=.path-mode-toggle",
+  );
 
   await page.keyboard.down("Alt");
   await page.keyboard.press("KeyC");
@@ -90,13 +93,26 @@ try {
     badgeBox.y + badgeBox.height / 2,
   );
   await check(
-    "picking a host element inside a memo()-wrapped component resolves the memo's name + file:line",
+    "picking a host element inside a memo()-wrapped component resolves the memo's own name (not an ancestor's), even when React unwraps the fiber's type to the inner render function",
     async () => {
       await pathEl.waitFor({ state: "visible", timeout: 2000 });
       const text = await pathEl.textContent();
-      assert.match(text ?? "", /<span>/);
-      assert.match(text ?? "", /MemoBadge/);
+      assert.match(text ?? "", /^<span> · MemoBadge · /);
       assert.match(text ?? "", /MemoBadge\.tsx:4:\d+-4:\d+/);
+    },
+  );
+
+  await check(
+    "root-mount path mode includes the memo()-wrapped component's own file in the breadcrumb",
+    async () => {
+      await pathModeToggle.click();
+      await pathEl.waitFor({ state: "visible", timeout: 2000 });
+      const text = await pathEl.textContent();
+      assert.match(
+        text ?? "",
+        /^App \(.*App\.tsx\) › Counter \(.*Counter\.tsx\) › MemoBadge \(.*MemoBadge\.tsx\) › <span>/,
+      );
+      await pathModeToggle.click();
     },
   );
 
