@@ -78,11 +78,31 @@ Run:
 bash scripts/e2e-react-plugin.sh
 ```
 
+## Preact harness
+
+`thisone-preact.e2e.mjs` covers what's specific to the Preact path against a **bare** Vite+Preact
+app (`examples/demo-app-preact/`, deliberately without `@preact/preset-vite`): source-location +
+component-name resolution for a plain function component, a `preact/compat`-`memo()`-wrapped
+component, and the default-exported root component — each resolved via the `options.diffed`
+WeakMap the plugin's virtual module installs, not via any Vue/React internals — plus the same
+prod-build exclusion check as the other harnesses (also asserting the `thisone-preact-hook`
+virtual module leaves no trace in the build). Panel mechanics (drag, clipboard, screenshot,
+hotkey) are framework-agnostic and already fully covered by `thisone.e2e.mjs` against the Vue
+demo app — this script doesn't repeat them.
+
+Run:
+
+```
+bash scripts/e2e-preact.sh
+```
+
+Same `link:../..` wiring note as the other demo apps applies to `examples/demo-app-preact`.
+
 ## Browsing both demos live
 
-`scripts/dev-demo.sh` fronts `examples/demo-app` (Vue) and `examples/demo-app-react` (React) with
-a single dev server on port 3000: the Vue app proxies `/react-demo/**` (including the HMR
-websocket) to a second, loopback-only Vite instance serving the React app under that base path.
-Each app's header has a Vue/React nav link to switch between them without touching the URL bar's
-port. Only used for manually poking at the picker in a browser — not part of any e2e/unit
-suite.
+`scripts/dev-demo.sh` fronts `examples/demo-app` (Vue), `examples/demo-app-react` (React), and
+`examples/demo-app-preact` (Preact) with a single dev server on port 3000: the Vue app proxies
+`/react-demo/**` and `/preact-demo/**` (including each app's HMR websocket) to two second,
+loopback-only Vite instances. Each app's header has a Vue/React/Preact nav link to switch between
+them without touching the URL bar's port. Only used for manually poking at the picker in a
+browser — not part of any e2e/unit suite.
