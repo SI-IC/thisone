@@ -7,6 +7,8 @@ const reactPort = Number(process.env.THISONE_DEMO_REACT_PORT ?? 5185);
 const reactTarget = `http://127.0.0.1:${reactPort}`;
 const preactPort = Number(process.env.THISONE_DEMO_PREACT_PORT ?? 5186);
 const preactTarget = `http://127.0.0.1:${preactPort}`;
+const sveltePort = Number(process.env.THISONE_DEMO_SVELTE_PORT ?? 5188);
+const svelteTarget = `http://127.0.0.1:${sveltePort}`;
 
 export default defineConfig({
   plugins: [vue(), thisone()],
@@ -23,6 +25,11 @@ export default defineConfig({
       },
       "/preact-demo": {
         target: preactTarget,
+        changeOrigin: true,
+        ws: true,
+      },
+      "/svelte-demo": {
+        target: svelteTarget,
         changeOrigin: true,
         ws: true,
       },
