@@ -7,7 +7,7 @@
 
 `dev-only` · `zero runtime` · `no network`
 
-![thisone demo](docs/demo.gif)
+![thisone demo](https://raw.githubusercontent.com/SI-IC/thisone/main/docs/demo.gif)
 
 ## The problem
 
@@ -140,6 +140,10 @@ bash scripts/e2e.sh        # e2e against examples/demo-app (Vue)
 bash scripts/e2e-react.sh  # e2e against examples/demo-app-react
 bash scripts/demo.sh       # re-record docs/demo.gif
 ```
+
+`scripts/demo.sh` records the picked element's absolute module path into the GIF, so run it from a
+checkout whose path you are willing to publish — a personal `/home/<you>/…` would end up in the
+committed asset.
 
 Versioning is automatic: a husky `pre-commit` hook bumps the patch version, rebuilds `dist/` and
 stages it whenever `src/` changes; a `post-commit` hook tags `v<version>`. For a larger bump run

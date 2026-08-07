@@ -7,8 +7,8 @@ import { PNG } from "pngjs";
 import { chromium } from "playwright";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const port = process.argv[2];
-if (!port) {
+const port = Number(process.argv[2]);
+if (!Number.isInteger(port) || port <= 0) {
   console.error("usage: record-demo.mjs <port>");
   process.exit(1);
 }
@@ -37,40 +37,45 @@ async function captureLoop(page) {
 }
 
 const browser = await chromium.launch();
-const context = await browser.newContext({
-  viewport: { width: WIDTH, height: HEIGHT },
-  deviceScaleFactor: 1,
-  permissions: ["clipboard-read", "clipboard-write"],
-});
-const page = await context.newPage();
-await page.addInitScript((pos) => {
-  localStorage.setItem("thisone:pos", JSON.stringify(pos));
-}, PANEL_POS);
-await page.goto(`http://localhost:${port}/`, { waitUntil: "networkidle" });
-await page.waitForTimeout(500);
+try {
+  const context = await browser.newContext({
+    viewport: { width: WIDTH, height: HEIGHT },
+    deviceScaleFactor: 1,
+    permissions: ["clipboard-write"],
+  });
+  const page = await context.newPage();
+  await page.addInitScript((pos) => {
+    localStorage.setItem("thisone:pos", JSON.stringify(pos));
+  }, PANEL_POS);
+  await page.goto(`http://localhost:${port}/`, { waitUntil: "networkidle" });
+  await page.waitForTimeout(500);
 
-capturing = true;
-const loop = captureLoop(page);
+  capturing = true;
+  const loop = captureLoop(page);
 
-await page.waitForTimeout(700);
-await page.keyboard.press("Alt+KeyC");
-await page.locator("#__thisone_root >> css=.panel").waitFor();
-await page.waitForTimeout(700);
+  try {
+    await page.waitForTimeout(700);
+    await page.keyboard.press("Alt+KeyC");
+    await page.locator("#__thisone_root >> css=.panel").waitFor();
+    await page.waitForTimeout(700);
 
-const target = page.locator("button").first();
-await target.hover();
-await page.waitForTimeout(600);
-await target.click();
+    const target = page.locator("button").first();
+    await target.hover();
+    await page.waitForTimeout(600);
+    await target.click();
 
-await page.locator("#__thisone_root >> css=img.shot").waitFor();
-await page.waitForTimeout(900);
-await page.locator("#__thisone_root >> css=.path").click();
-await page.waitForTimeout(1500);
-
-capturing = false;
-await loop;
-await context.close();
-await browser.close();
+    await page.locator("#__thisone_root >> css=img.shot").waitFor();
+    await page.waitForTimeout(900);
+    await page.locator("#__thisone_root >> css=.path").click();
+    await page.waitForTimeout(1500);
+  } finally {
+    capturing = false;
+    await loop;
+  }
+  await context.close();
+} finally {
+  await browser.close();
+}
 
 if (frames.length === 0) {
   console.error("record-demo: no frames captured");

@@ -1,20 +1,40 @@
 {
   "name": "thisone",
-  "version": "0.0.1",
-  "description": "Brand root for thisone — the released plugin lives in vite-plugin-thisone.",
+  "version": "1.0.0",
+  "description": "Point at any element in your Vite dev preview and hand your AI agent its exact source location and a screenshot. Alias of vite-plugin-thisone.",
+  "type": "module",
   "license": "MIT",
   "author": "SI-IC",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SI-IC/thisone.git"
+    "url": "git+https://github.com/SI-IC/thisone.git",
+    "directory": "packages/thisone-root"
   },
   "keywords": [
     "thisone",
+    "vite-plugin",
     "ai",
     "agent",
+    "llm",
     "devtools"
   ],
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    }
+  },
+  "main": "./index.js",
+  "types": "./index.d.ts",
   "files": [
+    "index.js",
+    "index.d.ts",
     "README.md"
-  ]
+  ],
+  "dependencies": {
+    "vite-plugin-thisone": "^1.0.0"
+  },
+  "peerDependencies": {
+    "vite": ">=5"
+  }
 }
