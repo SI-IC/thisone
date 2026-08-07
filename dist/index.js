@@ -39390,12 +39390,25 @@ function thisone(options = {}) {
   const hotkey = options.hotkey ?? "KeyC";
   const cfgJson = JSON.stringify({ hotkey });
   let isBuild = false;
+  let hasPreact = false;
   return {
     name: "vite-plugin-thisone",
     apply: "serve",
     enforce: "pre",
     config(_config, env) {
       isBuild = env.command === "build";
+    },
+    configResolved(resolvedConfig) {
+      try {
+        const pkgPath = resolve3(resolvedConfig.root, "package.json");
+        if (!existsSync(pkgPath)) return;
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+        hasPreact = Boolean(
+          pkg?.dependencies?.preact || pkg?.devDependencies?.preact
+        );
+      } catch {
+        hasPreact = false;
+      }
     },
     transform(code2, id) {
       if (isBuild) return;
@@ -39410,17 +39423,23 @@ function thisone(options = {}) {
       handler(html) {
         if (isBuild) return html;
         const client = loadClientBundle();
-        return {
-          html,
-          tags: [
-            {
-              tag: "script",
-              injectTo: "body",
-              children: `window.__THISONE_CFG__=${cfgJson};
+        const tags = [
+          {
+            tag: "script",
+            injectTo: "body",
+            children: `window.__THISONE_CFG__=${cfgJson};
 ${client}`
-            }
-          ]
-        };
+          }
+        ];
+        if (hasPreact) {
+          tags.unshift({
+            tag: "script",
+            attrs: { type: "module" },
+            injectTo: "head-prepend",
+            children: `import "virtual:thisone-preact-hook";`
+          });
+        }
+        return { html, tags };
       }
     }
   };

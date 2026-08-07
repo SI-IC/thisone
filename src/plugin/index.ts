@@ -29,6 +29,7 @@ export function thisone(options: ThisoneOptions = {}): Plugin {
   const cfgJson = JSON.stringify({ hotkey });
 
   let isBuild = false;
+  let hasPreact = false;
 
   return {
     name: "vite-plugin-thisone",
@@ -37,6 +38,19 @@ export function thisone(options: ThisoneOptions = {}): Plugin {
 
     config(_config, env) {
       isBuild = env.command === "build";
+    },
+
+    configResolved(resolvedConfig: { root: string }) {
+      try {
+        const pkgPath = resolve(resolvedConfig.root, "package.json");
+        if (!existsSync(pkgPath)) return;
+        const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+        hasPreact = Boolean(
+          pkg?.dependencies?.preact || pkg?.devDependencies?.preact,
+        );
+      } catch {
+        hasPreact = false;
+      }
     },
 
     transform(code: string, id: string) {
@@ -53,16 +67,27 @@ export function thisone(options: ThisoneOptions = {}): Plugin {
       handler(html: string) {
         if (isBuild) return html;
         const client = loadClientBundle();
-        return {
-          html,
-          tags: [
-            {
-              tag: "script",
-              injectTo: "body" as const,
-              children: `window.__THISONE_CFG__=${cfgJson};\n${client}`,
-            },
-          ],
-        };
+        const tags: {
+          tag: string;
+          attrs?: Record<string, string>;
+          injectTo: "body" | "head-prepend";
+          children: string;
+        }[] = [
+          {
+            tag: "script",
+            injectTo: "body",
+            children: `window.__THISONE_CFG__=${cfgJson};\n${client}`,
+          },
+        ];
+        if (hasPreact) {
+          tags.unshift({
+            tag: "script",
+            attrs: { type: "module" },
+            injectTo: "head-prepend",
+            children: `import "virtual:thisone-preact-hook";`,
+          });
+        }
+        return { html, tags };
       },
     },
   };

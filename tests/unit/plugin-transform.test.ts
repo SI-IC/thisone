@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { existsSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  writeFileSync,
+  rmSync as rmSyncFs,
+} from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import thisone from "../../src/plugin/index";
 import { injectSourceLocations } from "../../src/plugin/inject-src-loc";
 import { injectSourceLocations as injectReactSourceLocations } from "../../src/plugin/inject-src-loc-react";
@@ -11,6 +17,18 @@ function callConfig(plugin: AnyPlugin, command: "serve" | "build") {
   const hook = plugin.config as any;
   const fn = typeof hook === "function" ? hook : hook?.handler;
   fn?.call(plugin, {}, { command, mode: command });
+}
+
+function callConfigResolved(plugin: AnyPlugin, root: string) {
+  const hook = plugin.configResolved as any;
+  const fn = typeof hook === "function" ? hook : hook?.handler;
+  fn?.call(plugin, { root, command: "serve" });
+}
+
+function projectWith(pkg: Record<string, unknown>): string {
+  const dir = mkdtempSync(join(tmpdir(), "thisone-test-"));
+  writeFileSync(join(dir, "package.json"), JSON.stringify(pkg));
+  return dir;
 }
 
 function callTransform2(plugin: AnyPlugin, code: string, id: string) {
@@ -140,5 +158,71 @@ describe("plugin transform (.tsx/.jsx source location)", () => {
     expect(
       callTransform2(plugin, "export const x = 1;", "/proj/src/util.ts"),
     ).toBeUndefined();
+  });
+});
+
+describe("plugin Preact detection (hasPreact)", () => {
+  it("detects preact in dependencies and injects the preact-hook script", () => {
+    const root = projectWith({ dependencies: { preact: "10.29.8" } });
+    const plugin = thisone() as AnyPlugin;
+    callConfigResolved(plugin, root);
+    callConfig(plugin, "serve");
+    const res = callTransform(plugin, "<html><body></body></html>") as {
+      tags: { tag: string; children: string; injectTo: string }[];
+    };
+    expect(
+      res.tags.some((t) => t.children.includes("thisone-preact-hook")),
+    ).toBe(true);
+    rmSyncFs(root, { recursive: true, force: true });
+  });
+
+  it("detects preact in devDependencies too", () => {
+    const root = projectWith({ devDependencies: { preact: "10.29.8" } });
+    const plugin = thisone() as AnyPlugin;
+    callConfigResolved(plugin, root);
+    callConfig(plugin, "serve");
+    const res = callTransform(plugin, "<html><body></body></html>") as {
+      tags: { children: string }[];
+    };
+    expect(
+      res.tags.some((t) => t.children.includes("thisone-preact-hook")),
+    ).toBe(true);
+    rmSyncFs(root, { recursive: true, force: true });
+  });
+
+  it("does not inject the preact-hook script for a project without preact", () => {
+    const root = projectWith({ dependencies: { vue: "3.5.41" } });
+    const plugin = thisone() as AnyPlugin;
+    callConfigResolved(plugin, root);
+    callConfig(plugin, "serve");
+    const res = callTransform(plugin, "<html><body></body></html>") as {
+      tags: { children: string }[];
+    };
+    expect(
+      res.tags.some((t) => t.children.includes("thisone-preact-hook")),
+    ).toBe(false);
+    rmSyncFs(root, { recursive: true, force: true });
+  });
+
+  it("degrades to hasPreact:false when package.json is missing", () => {
+    const root = mkdtempSync(join(tmpdir(), "thisone-test-"));
+    const plugin = thisone() as AnyPlugin;
+    expect(() => callConfigResolved(plugin, root)).not.toThrow();
+    callConfig(plugin, "serve");
+    const res = callTransform(plugin, "<html><body></body></html>") as {
+      tags: { children: string }[];
+    };
+    expect(
+      res.tags.some((t) => t.children.includes("thisone-preact-hook")),
+    ).toBe(false);
+    rmSyncFs(root, { recursive: true, force: true });
+  });
+
+  it("degrades to hasPreact:false when package.json is malformed (hostile input)", () => {
+    const root = mkdtempSync(join(tmpdir(), "thisone-test-"));
+    writeFileSync(join(root, "package.json"), "{ not json");
+    const plugin = thisone() as AnyPlugin;
+    expect(() => callConfigResolved(plugin, root)).not.toThrow();
+    rmSyncFs(root, { recursive: true, force: true });
   });
 });
