@@ -39372,6 +39372,20 @@ function injectSourceLocations2(source, relFile) {
   }
 }
 
+// src/plugin/preact-hook.ts
+var PREACT_HOOK_VIRTUAL_ID = "virtual:thisone-preact-hook";
+var PREACT_HOOK_RESOLVED_ID = "\0" + PREACT_HOOK_VIRTUAL_ID;
+var PREACT_HOOK_SOURCE = `
+import { options } from "preact";
+var map = new WeakMap();
+var prevDiffed = options.diffed;
+options.diffed = function (vnode) {
+  if (vnode && vnode._dom) map.set(vnode._dom, vnode);
+  if (prevDiffed) prevDiffed(vnode);
+};
+window.__THISONE_PREACT_MAP__ = map;
+`;
+
 // src/plugin/index.ts
 var here = dirname(fileURLToPath(import.meta.url));
 function loadClientBundle() {
@@ -39417,6 +39431,12 @@ function thisone(options = {}) {
         return injectSourceLocations2(code2, id);
       }
       return;
+    },
+    resolveId(id) {
+      if (id === PREACT_HOOK_VIRTUAL_ID) return PREACT_HOOK_RESOLVED_ID;
+    },
+    load(id) {
+      if (id === PREACT_HOOK_RESOLVED_ID) return PREACT_HOOK_SOURCE;
     },
     transformIndexHtml: {
       order: "pre",

@@ -4,6 +4,11 @@ import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
 import { injectSourceLocations as injectVueSourceLocations } from "./inject-src-loc.js";
 import { injectSourceLocations as injectReactSourceLocations } from "./inject-src-loc-react.js";
+import {
+  PREACT_HOOK_VIRTUAL_ID,
+  PREACT_HOOK_RESOLVED_ID,
+  PREACT_HOOK_SOURCE,
+} from "./preact-hook.js";
 
 export interface ThisoneOptions {
   hotkey?: string;
@@ -60,6 +65,14 @@ export function thisone(options: ThisoneOptions = {}): Plugin {
         return injectReactSourceLocations(code, id);
       }
       return;
+    },
+
+    resolveId(id: string) {
+      if (id === PREACT_HOOK_VIRTUAL_ID) return PREACT_HOOK_RESOLVED_ID;
+    },
+
+    load(id: string) {
+      if (id === PREACT_HOOK_RESOLVED_ID) return PREACT_HOOK_SOURCE;
     },
 
     transformIndexHtml: {

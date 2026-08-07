@@ -10,6 +10,11 @@ import { tmpdir } from "node:os";
 import thisone from "../../src/plugin/index";
 import { injectSourceLocations } from "../../src/plugin/inject-src-loc";
 import { injectSourceLocations as injectReactSourceLocations } from "../../src/plugin/inject-src-loc-react";
+import {
+  PREACT_HOOK_VIRTUAL_ID,
+  PREACT_HOOK_RESOLVED_ID,
+  PREACT_HOOK_SOURCE,
+} from "../../src/plugin/preact-hook";
 
 type AnyPlugin = ReturnType<typeof thisone> & Record<string, any>;
 
@@ -224,5 +229,41 @@ describe("plugin Preact detection (hasPreact)", () => {
     const plugin = thisone() as AnyPlugin;
     expect(() => callConfigResolved(plugin, root)).not.toThrow();
     rmSyncFs(root, { recursive: true, force: true });
+  });
+});
+
+function callResolveId(plugin: AnyPlugin, id: string) {
+  const hook = plugin.resolveId as any;
+  const fn = typeof hook === "function" ? hook : hook?.handler;
+  return fn?.call(plugin, id);
+}
+
+function callLoad(plugin: AnyPlugin, id: string) {
+  const hook = plugin.load as any;
+  const fn = typeof hook === "function" ? hook : hook?.handler;
+  return fn?.call(plugin, id);
+}
+
+describe("plugin Preact virtual module wiring", () => {
+  it("resolveId maps the virtual id to the \0-prefixed resolved id", () => {
+    const plugin = thisone() as AnyPlugin;
+    expect(callResolveId(plugin, PREACT_HOOK_VIRTUAL_ID)).toBe(
+      PREACT_HOOK_RESOLVED_ID,
+    );
+  });
+
+  it("resolveId ignores unrelated ids", () => {
+    const plugin = thisone() as AnyPlugin;
+    expect(callResolveId(plugin, "some/other/module")).toBeUndefined();
+  });
+
+  it("load returns PREACT_HOOK_SOURCE for the resolved id", () => {
+    const plugin = thisone() as AnyPlugin;
+    expect(callLoad(plugin, PREACT_HOOK_RESOLVED_ID)).toBe(PREACT_HOOK_SOURCE);
+  });
+
+  it("load ignores unrelated ids", () => {
+    const plugin = thisone() as AnyPlugin;
+    expect(callLoad(plugin, "some/other/module")).toBeUndefined();
   });
 });
