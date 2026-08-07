@@ -13,12 +13,13 @@ describe("preact-hook virtual module ids", () => {
 });
 
 describe("PREACT_HOOK_SOURCE (evaluated against a fake preact options object)", () => {
-  async function evalHookSource(fakeOptions: any) {
+  async function evalHookSource(fakeOptions: any, fakeFragment: any = {}) {
     const rewritten = PREACT_HOOK_SOURCE.replace(
-      /import\s*\{\s*options\s*\}\s*from\s*["']preact["'];?/,
-      "const options = globalThis.__vitestFakePreactOptions;",
+      /import\s*\{\s*options,\s*Fragment\s*\}\s*from\s*["']preact["'];?/,
+      "const options = globalThis.__vitestFakePreactOptions; const Fragment = globalThis.__vitestFakePreactFragment;",
     );
     (globalThis as any).__vitestFakePreactOptions = fakeOptions;
+    (globalThis as any).__vitestFakePreactFragment = fakeFragment;
     (globalThis as any).__THISONE_PREACT_MAP__ = undefined;
     // eslint-disable-next-line no-new-func
     new Function(rewritten)();
@@ -27,6 +28,7 @@ describe("PREACT_HOOK_SOURCE (evaluated against a fake preact options object)", 
   beforeEach(() => {
     delete (globalThis as any).__THISONE_PREACT_MAP__;
     delete (window as any).__THISONE_PREACT_MAP__;
+    delete (window as any).__THISONE_PREACT_FRAGMENT__;
   });
 
   it("installs options.diffed and exposes a WeakMap on window.__THISONE_PREACT_MAP__", async () => {
@@ -36,16 +38,16 @@ describe("PREACT_HOOK_SOURCE (evaluated against a fake preact options object)", 
     expect(window.__THISONE_PREACT_MAP__).toBeInstanceOf(WeakMap);
   });
 
-  it("populates the map with vnode._dom -> vnode on diffed", async () => {
+  it("populates the map with vnode.__e -> vnode on diffed (Preact's mangled DOM-ref property, see mangle.json)", async () => {
     const fakeOptions: any = {};
     await evalHookSource(fakeOptions);
     const dom = document.createElement("div");
-    const vnode = { _dom: dom, type: "div" };
+    const vnode = { __e: dom, type: "div" };
     fakeOptions.diffed(vnode);
     expect(window.__THISONE_PREACT_MAP__!.get(dom)).toBe(vnode);
   });
 
-  it("does not throw and skips vnodes with no _dom yet", async () => {
+  it("does not throw and skips vnodes with no __e yet", async () => {
     const fakeOptions: any = {};
     await evalHookSource(fakeOptions);
     expect(() => fakeOptions.diffed({ type: "div" })).not.toThrow();
@@ -56,9 +58,15 @@ describe("PREACT_HOOK_SOURCE (evaluated against a fake preact options object)", 
     const fakeOptions: any = { diffed: (v: any) => calls.push(v) };
     await evalHookSource(fakeOptions);
     const dom = document.createElement("span");
-    const vnode = { _dom: dom, type: "span" };
+    const vnode = { __e: dom, type: "span" };
     fakeOptions.diffed(vnode);
     expect(calls).toEqual([vnode]);
     expect(window.__THISONE_PREACT_MAP__!.get(dom)).toBe(vnode);
+  });
+
+  it("exposes preact's Fragment on window.__THISONE_PREACT_FRAGMENT__ so the resolver can skip it in ancestor chains", async () => {
+    const fakeFragment = function Fragment() {};
+    await evalHookSource({}, fakeFragment);
+    expect(window.__THISONE_PREACT_FRAGMENT__).toBe(fakeFragment);
   });
 });

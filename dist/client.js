@@ -77,14 +77,15 @@
 
   // src/client/resolve-component-preact.ts
   function preactComponentName(type) {
+    if (type == null ? void 0 : type.__name) return String(type.__name);
     if (type == null ? void 0 : type.displayName) return String(type.displayName);
     if (type == null ? void 0 : type.name) return String(type.name);
-    if (type == null ? void 0 : type.__name) return String(type.__name);
     if (type == null ? void 0 : type.__file) return baseName(String(type.__file));
     return "Anonymous";
   }
   function isComponentVnodeType(type) {
-    return typeof type === "function";
+    if (typeof type !== "function") return false;
+    return type !== window.__THISONE_PREACT_FRAGMENT__;
   }
   function resolvePreactComponent(el) {
     var _a2, _b;
@@ -109,7 +110,7 @@
           resolvedFile = file;
         }
       }
-      cur = cur._parent;
+      cur = cur.__;
     }
     if (!resolvedName) {
       resolvedName = (_b = (_a2 = chain[0]) == null ? void 0 : _a2.name) != null ? _b : "Anonymous";

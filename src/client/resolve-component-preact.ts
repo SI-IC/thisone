@@ -2,15 +2,16 @@ import { baseName } from "./base-name";
 import type { ChainEntry, ComponentDescriptor } from "./resolve-component";
 
 export function preactComponentName(type: any): string {
+  if (type?.__name) return String(type.__name);
   if (type?.displayName) return String(type.displayName);
   if (type?.name) return String(type.name);
-  if (type?.__name) return String(type.__name);
   if (type?.__file) return baseName(String(type.__file));
   return "Anonymous";
 }
 
 function isComponentVnodeType(type: any): boolean {
-  return typeof type === "function";
+  if (typeof type !== "function") return false;
+  return type !== window.__THISONE_PREACT_FRAGMENT__;
 }
 
 export function resolvePreactComponent(
@@ -39,7 +40,7 @@ export function resolvePreactComponent(
         resolvedFile = file;
       }
     }
-    cur = cur._parent;
+    cur = cur.__;
   }
 
   if (!resolvedName) {

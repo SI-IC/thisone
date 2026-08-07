@@ -6,7 +6,7 @@ import {
 } from "../../src/client/resolve-component-preact";
 
 function vnode(type: any, dom: Element | null, parent: any = null): any {
-  return { type, _dom: dom, _parent: parent };
+  return { type, __e: dom, __: parent };
 }
 
 function withMap(entries: [Element, any][]): void {
@@ -17,12 +17,21 @@ function withMap(entries: [Element, any][]): void {
 
 beforeEach(() => {
   delete (window as any).__THISONE_PREACT_MAP__;
+  delete (window as any).__THISONE_PREACT_FRAGMENT__;
 });
 afterEach(() => {
   delete (window as any).__THISONE_PREACT_MAP__;
+  delete (window as any).__THISONE_PREACT_FRAGMENT__;
 });
 
 describe("preactComponentName", () => {
+  it("prefers __name (thisone's own instrumentation) over preact/compat's auto-generated displayName (e.g. memo()'s \"Memo(Name)\")", () => {
+    const type: any = function Foo() {};
+    type.displayName = "Memo(Foo)";
+    type.__name = "Foo";
+    expect(preactComponentName(type)).toBe("Foo");
+  });
+
   it("prefers displayName over the function's own name", () => {
     const type: any = function Foo() {};
     type.displayName = "CustomName";
@@ -69,7 +78,7 @@ describe("resolvePreactComponent", () => {
     expect(resolvePreactComponent(document.createElement("div"))).toBeNull();
   });
 
-  it("resolves name/file/chain by walking vnode._parent", () => {
+  it("resolves name/file/chain by walking vnode.__ (Preact's mangled parent-ref property)", () => {
     function App() {}
     (App as any).__file = "/src/App.tsx";
     function Counter() {}
@@ -138,5 +147,19 @@ describe("resolvePreactComponent", () => {
     withMap([[el, leaf]]);
     const r = resolvePreactComponent(el)!;
     expect(r.chain.length).toBeLessThanOrEqual(1000);
+  });
+
+  it("skips Preact's own Fragment component (window.__THISONE_PREACT_FRAGMENT__) in the ancestor chain (e.g. a component whose render body is a top-level <>...</>)", () => {
+    function Fragment() {}
+    (window as any).__THISONE_PREACT_FRAGMENT__ = Fragment;
+    function App() {}
+    (App as any).__file = "/src/App.tsx";
+    const el = document.createElement("h1");
+    const appVnode = vnode(App, null);
+    const fragmentVnode = vnode(Fragment, null, appVnode);
+    const leaf = vnode("h1", el, fragmentVnode);
+    withMap([[el, leaf]]);
+    const r = resolvePreactComponent(el)!;
+    expect(r.chain).toEqual([{ name: "App", file: "/src/App.tsx" }]);
   });
 });

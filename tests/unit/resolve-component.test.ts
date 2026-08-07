@@ -332,7 +332,7 @@ describe("resolveComponent dispatcher — Preact", () => {
     (Widget as any).__file = "/src/Widget.tsx";
     const el = document.createElement("span");
     const map = new WeakMap<Element, any>();
-    map.set(el, { type: Widget, _dom: el, _parent: null });
+    map.set(el, { type: Widget, __e: el, __: null });
     (window as any).__THISONE_PREACT_MAP__ = map;
 
     const r = resolveComponent(el)!;
@@ -347,7 +347,7 @@ describe("resolveComponent dispatcher — Preact", () => {
       parent: null,
     };
     const map = new WeakMap<Element, any>();
-    map.set(el, { type: function PreactWidget() {}, _dom: el, _parent: null });
+    map.set(el, { type: function PreactWidget() {}, __e: el, __: null });
     (window as any).__THISONE_PREACT_MAP__ = map;
 
     expect(resolveComponent(el)!.name).toBe("VueWidget");
@@ -358,7 +358,7 @@ describe("resolveComponent dispatcher — Preact", () => {
     const el = document.createElement("span");
     (el as any).__reactFiber$preacttest = { type: ReactWidget, return: null };
     const map = new WeakMap<Element, any>();
-    map.set(el, { type: function PreactWidget() {}, _dom: el, _parent: null });
+    map.set(el, { type: function PreactWidget() {}, __e: el, __: null });
     (window as any).__THISONE_PREACT_MAP__ = map;
 
     expect(resolveComponent(el)!.name).toBe("ReactWidget");
