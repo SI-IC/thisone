@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { loadPosition, savePosition } from "../../src/client/position-store";
 
-const KEY = "pick-element:pos";
+const KEY = "thisone:pos";
 
 describe("position-store", () => {
   beforeEach(() => {

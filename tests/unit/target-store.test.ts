@@ -7,7 +7,7 @@ import {
   saveTargetPosition,
 } from "../../src/client/target-store";
 
-const POS_KEY = "pick-element:target-pos";
+const POS_KEY = "thisone:target-pos";
 
 describe("target-store", () => {
   beforeEach(() => {

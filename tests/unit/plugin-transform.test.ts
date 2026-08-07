@@ -47,7 +47,7 @@ describe("plugin transformIndexHtml", () => {
     const tag = res.tags[0];
     expect(tag.tag).toBe("script");
     expect(tag.injectTo).toBe("body");
-    expect(tag.children).toContain("__PICK_ELEMENT_CFG__");
+    expect(tag.children).toContain("__THISONE_CFG__");
     expect(tag.children).toContain('"hotkey":"KeyB"');
     // the real client bundle is inlined
     expect(tag.children).toContain("__thisone_root");

@@ -17,8 +17,8 @@ function pressAlt(code: string): void {
 
 beforeEach(() => {
   document.body.innerHTML = "";
-  delete (window as unknown as Record<string, unknown>).__pick_element_booted__;
-  delete (window as unknown as Record<string, unknown>).__PICK_ELEMENT_CFG__;
+  delete (window as unknown as Record<string, unknown>).__thisone_booted__;
+  delete (window as unknown as Record<string, unknown>).__THISONE_CFG__;
   vi.resetModules();
 });
 
@@ -39,8 +39,8 @@ describe("index boot", () => {
     expect(panel()?.classList.contains("hidden")).toBe(false);
   });
 
-  it("honors a custom hotkey from window.__PICK_ELEMENT_CFG__ (malformed-input guard: default key stays inert)", async () => {
-    (window as unknown as Record<string, unknown>).__PICK_ELEMENT_CFG__ = {
+  it("honors a custom hotkey from window.__THISONE_CFG__ (malformed-input guard: default key stays inert)", async () => {
+    (window as unknown as Record<string, unknown>).__THISONE_CFG__ = {
       hotkey: "KeyX",
     };
     await import("../../src/client/index");

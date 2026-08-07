@@ -1,22 +1,22 @@
 import { createOverlay } from "./overlay";
 
-interface PickElementConfig {
+interface ThisoneConfig {
   hotkey?: string;
 }
 
 declare global {
   interface Window {
-    __PICK_ELEMENT_CFG__?: PickElementConfig;
-    __pick_element_booted__?: boolean;
+    __THISONE_CFG__?: ThisoneConfig;
+    __thisone_booted__?: boolean;
   }
 }
 
 function boot(): void {
   if (typeof window === "undefined" || typeof document === "undefined") return;
-  if (window.__pick_element_booted__) return;
-  window.__pick_element_booted__ = true;
+  if (window.__thisone_booted__) return;
+  window.__thisone_booted__ = true;
 
-  const cfg = window.__PICK_ELEMENT_CFG__ ?? {};
+  const cfg = window.__THISONE_CFG__ ?? {};
   const hotkey = cfg.hotkey ?? "KeyC";
   const overlay = createOverlay();
   overlay.mount();

@@ -1,4 +1,4 @@
-const KEY = "pick-element:pos";
+const KEY = "thisone:pos";
 
 export interface Position {
   x: number;

@@ -5,8 +5,8 @@ export interface TargetPosition {
   offset: number;
 }
 
-const ENABLED_KEY = "pick-element:target-enabled";
-const POS_KEY = "pick-element:target-pos";
+const ENABLED_KEY = "thisone:target-enabled";
+const POS_KEY = "thisone:target-pos";
 const EDGES: Edge[] = ["top", "right", "bottom", "left"];
 
 export function loadTargetEnabled(): boolean {

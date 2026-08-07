@@ -212,7 +212,7 @@ describe("overlay", () => {
   });
 
   it("restores a persisted position on open", () => {
-    localStorage.setItem("pick-element:pos", JSON.stringify({ x: 123, y: 45 }));
+    localStorage.setItem("thisone:pos", JSON.stringify({ x: 123, y: 45 }));
     const o = createOverlay();
     o.open();
     expect(panel().style.left).toBe("123px");
@@ -362,7 +362,7 @@ describe("overlay", () => {
     );
     window.dispatchEvent(new MouseEvent("mouseup", { button: 2 }));
     expect(btn.classList.contains("edge-top")).toBe(true);
-    const stored = JSON.parse(localStorage.getItem("pick-element:target-pos")!);
+    const stored = JSON.parse(localStorage.getItem("thisone:target-pos")!);
     expect(stored.edge).toBe("top");
     o.destroy();
   });
@@ -384,7 +384,7 @@ describe("overlay", () => {
       new MouseEvent("mousemove", { clientX: 512, clientY: 0 }),
     );
     window.dispatchEvent(new MouseEvent("mouseup"));
-    expect(localStorage.getItem("pick-element:target-pos")).toBeNull();
+    expect(localStorage.getItem("thisone:target-pos")).toBeNull();
     o.destroy();
   });
 

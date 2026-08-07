@@ -1687,7 +1687,7 @@
   }
 
   // src/client/position-store.ts
-  var KEY = "pick-element:pos";
+  var KEY = "thisone:pos";
   function loadPosition() {
     try {
       const raw = localStorage.getItem(KEY);
@@ -1709,8 +1709,8 @@
   }
 
   // src/client/target-store.ts
-  var ENABLED_KEY = "pick-element:target-enabled";
-  var POS_KEY = "pick-element:target-pos";
+  var ENABLED_KEY = "thisone:target-enabled";
+  var POS_KEY = "thisone:target-pos";
   var EDGES = ["top", "right", "bottom", "left"];
   function loadTargetEnabled() {
     try {
@@ -1749,7 +1749,7 @@
   }
 
   // src/client/overlay.ts
-  var HOST_ID = "__pick_element_root";
+  var HOST_ID = "__thisone_root";
   var STYLE = `
 :host { all: initial; }
 * { box-sizing: border-box; font-family: ui-sans-serif, system-ui, sans-serif; }
@@ -2183,9 +2183,9 @@ img.shot:hover { border-color: #89b4fa; }
   function boot() {
     var _a2, _b;
     if (typeof window === "undefined" || typeof document === "undefined") return;
-    if (window.__pick_element_booted__) return;
-    window.__pick_element_booted__ = true;
-    const cfg = (_a2 = window.__PICK_ELEMENT_CFG__) != null ? _a2 : {};
+    if (window.__thisone_booted__) return;
+    window.__thisone_booted__ = true;
+    const cfg = (_a2 = window.__THISONE_CFG__) != null ? _a2 : {};
     const hotkey = (_b = cfg.hotkey) != null ? _b : "KeyC";
     const overlay = createOverlay();
     overlay.mount();

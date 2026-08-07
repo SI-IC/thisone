@@ -11,7 +11,7 @@ import {
   type TargetPosition,
 } from "./target-store";
 
-export const HOST_ID = "__pick_element_root";
+export const HOST_ID = "__thisone_root";
 
 export interface Overlay {
   open(): void;
