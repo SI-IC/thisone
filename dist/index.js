@@ -315,9 +315,13 @@ import {
   NodeTypes,
   ElementTypes
 } from "@vue/compiler-core";
+
+// src/plugin/escape-attr.ts
 function escapeAttr(value) {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+
+// src/plugin/inject-src-loc.ts
 function collectInsertions(nodes, file2, out) {
   for (const node of nodes) {
     switch (node.type) {

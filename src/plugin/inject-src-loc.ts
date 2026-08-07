@@ -4,18 +4,11 @@ import {
   ElementTypes,
   type TemplateChildNode,
 } from "@vue/compiler-core";
+import { escapeAttr } from "./escape-attr.js";
 
 interface Insertion {
   offset: number;
   text: string;
-}
-
-function escapeAttr(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 }
 
 function collectInsertions(
