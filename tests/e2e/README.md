@@ -14,7 +14,7 @@ bash scripts/e2e.sh
 ```
 
 This builds the root package, starts the demo app's dev server on a free port, runs
-`pick-element.e2e.mjs` against it, and tears the dev server down. Prints `e2e ok` and exits 0 on
+`thisone.e2e.mjs` against it, and tears the dev server down. Prints `e2e ok` and exits 0 on
 success. Takes well under a minute.
 
 First run needs the chromium binary:
@@ -32,7 +32,7 @@ app, and the e2e suite would exercise a stale `dist/client.js`. `link:` always r
 
 ## What it covers
 
-`pick-element.e2e.mjs` asserts, in order: the demo page loads clean with no console/page errors,
+`thisone.e2e.mjs` asserts, in order: the demo page loads clean with no console/page errors,
 Alt+C opens the shadow-DOM panel and pick-mode hint, clicking the `Counter` button resolves the
 `Counter` component and renders a path string with source line numbers
 (`<button> · Counter · Counter.vue:8:col-10:col`), a screenshot of the picked element renders as a
@@ -45,12 +45,12 @@ block; see the `edge:*` / `prod` labels in the script.
 
 ## React harness
 
-`pick-element-react.e2e.mjs` covers what's specific to the React path against a **bare**
+`thisone-react.e2e.mjs` covers what's specific to the React path against a **bare**
 Vite+React app (`examples/demo-app-react/`, deliberately without `@vitejs/plugin-react`):
 source-location + component-name resolution for a plain function component, a
 `memo()`-wrapped component, and the default-exported root component, plus the same prod-build
 exclusion check as the Vue harness. Panel mechanics (drag, clipboard, screenshot, hotkey) are
-framework-agnostic and already fully covered by `pick-element.e2e.mjs` against the Vue demo
+framework-agnostic and already fully covered by `thisone.e2e.mjs` against the Vue demo
 app — this script doesn't repeat them.
 
 Run:

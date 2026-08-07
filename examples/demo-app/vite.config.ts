@@ -1,7 +1,7 @@
 import vue from "@vitejs/plugin-vue";
 import { defineConfig } from "vite";
-import pickElement from "vite-plugin-pick-element";
+import thisone from "vite-plugin-thisone";
 
 export default defineConfig({
-  plugins: [vue(), pickElement()],
+  plugins: [vue(), thisone()],
 });

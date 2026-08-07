@@ -21,7 +21,7 @@ importers:
       vite:
         specifier: 8.2.0
         version: 8.2.0
-      vite-plugin-pick-element:
+      vite-plugin-thisone:
         specifier: link:../..
         version: link:../..
 

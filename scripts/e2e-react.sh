@@ -3,13 +3,13 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 demo="$root/examples/demo-app-react"
-port="${PICK_ELEMENT_E2E_REACT_PORT:-5184}"
+port="${THISONE_E2E_REACT_PORT:-5184}"
 
 cd "$root"
 pnpm build
 
 cd "$demo"
-node_modules/.bin/vite --port "$port" --strictPort >/tmp/pick-element-e2e-react-dev.log 2>&1 &
+node_modules/.bin/vite --port "$port" --strictPort >/tmp/thisone-e2e-react-dev.log 2>&1 &
 dev_pid=$!
 
 cleanup() {
@@ -28,9 +28,9 @@ for _ in $(seq 1 50); do
 done
 if [ "$ready" -ne 1 ]; then
   echo "demo dev server did not become ready on port $port" >&2
-  cat /tmp/pick-element-e2e-react-dev.log >&2
+  cat /tmp/thisone-e2e-react-dev.log >&2
   exit 1
 fi
 
 cd "$root"
-node tests/e2e/pick-element-react.e2e.mjs "$port"
+node tests/e2e/thisone-react.e2e.mjs "$port"

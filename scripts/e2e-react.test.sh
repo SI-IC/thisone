@@ -18,8 +18,8 @@ else
   exit 1
 fi
 
-if grep -q 'pick-element-react.e2e.mjs' "$script"; then
-  echo "ok - scripts/e2e-react.sh delegates to tests/e2e/pick-element-react.e2e.mjs"
+if grep -q 'thisone-react.e2e.mjs' "$script"; then
+  echo "ok - scripts/e2e-react.sh delegates to tests/e2e/thisone-react.e2e.mjs"
 else
   echo "not ok - scripts/e2e-react.sh does not delegate to the react e2e test"
   exit 1

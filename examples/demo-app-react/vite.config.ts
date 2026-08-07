@@ -1,6 +1,6 @@
 import { defineConfig } from "vite";
-import pickElement from "vite-plugin-pick-element";
+import thisone from "vite-plugin-thisone";
 
 export default defineConfig({
-  plugins: [pickElement()],
+  plugins: [thisone()],
 });

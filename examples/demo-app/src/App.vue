@@ -4,7 +4,7 @@ import Counter from "./components/Counter.vue";
 
 <template>
   <main>
-    <h1>pick-element demo</h1>
+    <h1>thisone demo</h1>
     <Counter />
   </main>
 </template>

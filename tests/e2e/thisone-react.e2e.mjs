@@ -13,7 +13,7 @@ const demoDir = resolve(here, "../../examples/demo-app-react");
 const port = Number(process.argv[2]);
 assert.ok(
   Number.isInteger(port) && port > 0,
-  "usage: pick-element-react.e2e.mjs <port>",
+  "usage: thisone-react.e2e.mjs <port>",
 );
 const base = `http://localhost:${port}`;
 
@@ -61,8 +61,8 @@ try {
     },
   );
 
-  const panel = page.locator("#__pick_element_root >> css=.panel");
-  const pathEl = page.locator("#__pick_element_root >> css=.path");
+  const panel = page.locator("#__thisone_root >> css=.panel");
+  const pathEl = page.locator("#__thisone_root >> css=.path");
 
   await page.keyboard.down("Alt");
   await page.keyboard.press("KeyC");
@@ -132,7 +132,7 @@ await check(
       { cwd: demoDir, stdio: "pipe" },
     );
     const found = grepMatches(
-      "__pick_element\\|data-src-loc",
+      "__thisone\\|data-src-loc",
       resolve(demoDir, "dist"),
     );
     assert.equal(found, "");

@@ -13,7 +13,7 @@ const demoDir = resolve(here, "../../examples/demo-app");
 const port = Number(process.argv[2]);
 assert.ok(
   Number.isInteger(port) && port > 0,
-  "usage: pick-element.e2e.mjs <port>",
+  "usage: thisone.e2e.mjs <port>",
 );
 const base = `http://localhost:${port}`;
 
@@ -60,9 +60,9 @@ try {
     assert.deepEqual(pageErrors, []);
   });
 
-  const panel = page.locator("#__pick_element_root >> css=.panel");
-  const pathEl = page.locator("#__pick_element_root >> css=.path");
-  const img = page.locator("#__pick_element_root >> css=img.shot");
+  const panel = page.locator("#__thisone_root >> css=.panel");
+  const pathEl = page.locator("#__thisone_root >> css=.path");
+  const img = page.locator("#__thisone_root >> css=img.shot");
 
   await page.keyboard.down("Alt");
   await page.keyboard.press("KeyC");
@@ -70,7 +70,7 @@ try {
   await check("panel opens on Alt+C in pick mode", async () => {
     await panel.waitFor({ state: "visible", timeout: 2000 });
     await page
-      .locator("#__pick_element_root >> css=.pickhint")
+      .locator("#__thisone_root >> css=.pickhint")
       .waitFor({ state: "visible", timeout: 2000 });
   });
 
@@ -120,10 +120,10 @@ try {
         await spage.keyboard.press("KeyC");
         await spage.keyboard.up("Alt");
         await spage
-          .locator("#__pick_element_root >> css=.panel")
+          .locator("#__thisone_root >> css=.panel")
           .waitFor({ state: "visible", timeout: 2000 });
         await spage.locator('button:has-text("count is")').click();
-        const simg = spage.locator("#__pick_element_root >> css=img.shot");
+        const simg = spage.locator("#__thisone_root >> css=img.shot");
         await simg.waitFor({ state: "visible", timeout: 5000 });
         const scrollYAtCapture = await spage.evaluate(() => window.scrollY);
         assert.ok(
@@ -206,14 +206,14 @@ try {
       await page.keyboard.press("KeyC");
       await page.keyboard.up("Alt");
       await panel.waitFor({ state: "visible", timeout: 2000 });
-      const header = page.locator("#__pick_element_root >> css=.header");
+      const header = page.locator("#__thisone_root >> css=.header");
       const box = await header.boundingBox();
       await page.mouse.move(box.x + 10, box.y + 10);
       await page.mouse.down();
       await page.mouse.move(box.x + 200, box.y + 150);
       await page.mouse.up();
       storedBefore = await page.evaluate(() =>
-        localStorage.getItem("pick-element:pos"),
+        localStorage.getItem("thisone:pos"),
       );
       assert.ok(storedBefore, "position should be saved to localStorage");
 
@@ -232,7 +232,7 @@ try {
     "edge:malformed-input — corrupt localStorage falls back to a default position",
     async () => {
       await page.evaluate(() =>
-        localStorage.setItem("pick-element:pos", "not json"),
+        localStorage.setItem("thisone:pos", "not json"),
       );
       await page.reload({ waitUntil: "networkidle" });
       await page.keyboard.down("Alt");
@@ -247,7 +247,7 @@ try {
   await check(
     "edge:boundary — dragging the panel past the top/left edge clamps it inside the viewport",
     async () => {
-      const header = page.locator("#__pick_element_root >> css=.header");
+      const header = page.locator("#__thisone_root >> css=.header");
       const box = await header.boundingBox();
       await page.mouse.move(box.x + 10, box.y + 10);
       await page.mouse.down();
@@ -263,7 +263,7 @@ try {
   await check(
     "edge:boundary — dragging the panel past the bottom edge only clamps the header, not the whole panel, off-screen",
     async () => {
-      const header = page.locator("#__pick_element_root >> css=.header");
+      const header = page.locator("#__thisone_root >> css=.header");
       const box = await header.boundingBox();
       const viewport = page.viewportSize();
       await page.mouse.move(box.x + 10, box.y + 10);
@@ -283,7 +283,7 @@ try {
   await check(
     "hovering the screenshot highlights its border like the path text does",
     async () => {
-      await page.evaluate(() => localStorage.removeItem("pick-element:pos"));
+      await page.evaluate(() => localStorage.removeItem("thisone:pos"));
       await page.keyboard.down("Alt");
       await page.keyboard.press("KeyC");
       await page.keyboard.up("Alt");
@@ -303,9 +303,9 @@ try {
   );
 
   const targetToggle = page.locator(
-    "#__pick_element_root >> css=.target-toggle",
+    "#__thisone_root >> css=.target-toggle",
   );
-  const targetBtn = page.locator("#__pick_element_root >> css=.target-btn");
+  const targetBtn = page.locator("#__thisone_root >> css=.target-btn");
 
   await check(
     "the edge target button is hidden until enabled via the header toggle",
@@ -344,7 +344,7 @@ try {
       await page.mouse.move(viewport.width / 2, 10);
       await page.mouse.up({ button: "right" });
       const stored = await page.evaluate(() =>
-        localStorage.getItem("pick-element:target-pos"),
+        localStorage.getItem("thisone:target-pos"),
       );
       assert.ok(stored, "target position should be saved to localStorage");
       const parsed = JSON.parse(stored);
@@ -364,7 +364,7 @@ try {
       await page.keyboard.press("KeyC");
       await page.keyboard.up("Alt");
       await panel.waitFor({ state: "visible", timeout: 2000 });
-      await page.locator("#__pick_element_root >> css=.close").click();
+      await page.locator("#__thisone_root >> css=.close").click();
       await panel.waitFor({ state: "hidden", timeout: 2000 });
       await targetBtn.waitFor({ state: "visible", timeout: 2000 });
     },
@@ -382,7 +382,7 @@ await check("prod build does not inject the overlay", async () => {
       stdio: "pipe",
     },
   );
-  const found = grepMatches("__pick_element", resolve(demoDir, "dist"));
+  const found = grepMatches("__thisone", resolve(demoDir, "dist"));
   assert.equal(found, "");
   rmSync(resolve(demoDir, "dist"), { recursive: true, force: true });
 });
