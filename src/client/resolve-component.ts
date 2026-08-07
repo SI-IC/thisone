@@ -22,10 +22,15 @@ export interface ElementDescriptor {
   sourceLoc: SourceLocation | null;
 }
 
+export interface ChainEntry {
+  name: string;
+  file: string | null;
+}
+
 export interface ComponentDescriptor {
   name: string;
   file: string | null;
-  chain: string[];
+  chain: ChainEntry[];
 }
 
 export type ResolvedComponent = ComponentDescriptor;
@@ -50,25 +55,26 @@ function resolveVueComponent(el: Element | null): ResolvedComponent | null {
   const start = (el as any).__vueParentComponent;
   if (!start) return null;
 
-  const chain: string[] = [];
+  const chain: ChainEntry[] = [];
   let resolvedName: string | null = null;
   let resolvedFile: string | null = null;
 
   let cur: any = start;
   let guard = 0;
   while (cur && guard++ < 1000) {
-    chain.push(componentName(cur));
-    const file = cur.type?.__file;
+    const name = componentName(cur);
+    const file = cur.type?.__file ? String(cur.type.__file) : null;
+    chain.push({ name, file });
     if (!resolvedName && file) {
-      resolvedName = componentName(cur);
-      resolvedFile = String(file);
+      resolvedName = name;
+      resolvedFile = file;
     }
     cur = cur.parent;
   }
 
   // No `__file` anywhere (e.g. minified prod build) — keep the nearest name.
   if (!resolvedName) {
-    resolvedName = chain[0] ?? "Anonymous";
+    resolvedName = chain[0]?.name ?? "Anonymous";
     resolvedFile = null;
   }
 

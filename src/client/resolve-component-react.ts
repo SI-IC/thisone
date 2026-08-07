@@ -1,5 +1,5 @@
 import { baseName } from "./base-name";
-import type { ComponentDescriptor } from "./resolve-component";
+import type { ChainEntry, ComponentDescriptor } from "./resolve-component";
 
 const HOC_SYMBOL_TAGS = new Set([
   "Symbol(react.memo)",
@@ -49,7 +49,7 @@ export function resolveReactComponent(
   const start = (el as any)[key];
   if (!start) return null;
 
-  const chain: string[] = [];
+  const chain: ChainEntry[] = [];
   let resolvedName: string | null = null;
   let resolvedFile: string | null = null;
 
@@ -59,18 +59,19 @@ export function resolveReactComponent(
     const type = cur.type;
     if (isComponentFiberType(type)) {
       const name = reactComponentName(type);
-      chain.push(name);
-      const file = fileOf(type);
+      const rawFile = fileOf(type);
+      const file = rawFile ? String(rawFile) : null;
+      chain.push({ name, file });
       if (!resolvedName && file) {
         resolvedName = name;
-        resolvedFile = String(file);
+        resolvedFile = file;
       }
     }
     cur = cur.return;
   }
 
   if (!resolvedName) {
-    resolvedName = chain[0] ?? "Anonymous";
+    resolvedName = chain[0]?.name ?? "Anonymous";
     resolvedFile = null;
   }
 

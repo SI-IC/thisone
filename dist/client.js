@@ -43,7 +43,7 @@
     return Object.keys(el).find((k) => k.startsWith("__reactFiber$"));
   }
   function resolveReactComponent(el) {
-    var _a2;
+    var _a2, _b;
     if (!el) return null;
     const key = getReactFiberKey(el);
     if (!key) return null;
@@ -58,17 +58,18 @@
       const type = cur.type;
       if (isComponentFiberType(type)) {
         const name = reactComponentName(type);
-        chain.push(name);
-        const file = fileOf(type);
+        const rawFile = fileOf(type);
+        const file = rawFile ? String(rawFile) : null;
+        chain.push({ name, file });
         if (!resolvedName && file) {
           resolvedName = name;
-          resolvedFile = String(file);
+          resolvedFile = file;
         }
       }
       cur = cur.return;
     }
     if (!resolvedName) {
-      resolvedName = (_a2 = chain[0]) != null ? _a2 : "Anonymous";
+      resolvedName = (_b = (_a2 = chain[0]) == null ? void 0 : _a2.name) != null ? _b : "Anonymous";
       resolvedFile = null;
     }
     return { name: resolvedName, file: resolvedFile, chain };
@@ -89,7 +90,7 @@
     return resolveReactComponent(el);
   }
   function resolveVueComponent(el) {
-    var _a2, _b;
+    var _a2, _b, _c;
     if (!el) return null;
     const start = el.__vueParentComponent;
     if (!start) return null;
@@ -99,16 +100,17 @@
     let cur = start;
     let guard = 0;
     while (cur && guard++ < 1e3) {
-      chain.push(componentName(cur));
-      const file = (_a2 = cur.type) == null ? void 0 : _a2.__file;
+      const name = componentName(cur);
+      const file = ((_a2 = cur.type) == null ? void 0 : _a2.__file) ? String(cur.type.__file) : null;
+      chain.push({ name, file });
       if (!resolvedName && file) {
-        resolvedName = componentName(cur);
-        resolvedFile = String(file);
+        resolvedName = name;
+        resolvedFile = file;
       }
       cur = cur.parent;
     }
     if (!resolvedName) {
-      resolvedName = (_b = chain[0]) != null ? _b : "Anonymous";
+      resolvedName = (_c = (_b = chain[0]) == null ? void 0 : _b.name) != null ? _c : "Anonymous";
       resolvedFile = null;
     }
     return { name: resolvedName, file: resolvedFile, chain };

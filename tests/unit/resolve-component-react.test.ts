@@ -77,7 +77,10 @@ describe("resolveReactComponent", () => {
     const r = resolveReactComponent(el)!;
     expect(r.name).toBe("Counter");
     expect(r.file).toBe("/src/components/Counter.tsx");
-    expect(r.chain).toEqual(["Counter", "App"]);
+    expect(r.chain).toEqual([
+      { name: "Counter", file: "/src/components/Counter.tsx" },
+      { name: "App", file: "/src/App.tsx" },
+    ]);
   });
 
   it("returns null for an element with no react fiber key (outside the React tree)", () => {
@@ -94,7 +97,7 @@ describe("resolveReactComponent", () => {
     const el = document.createElement("span");
     (el as any).__reactFiber$k2 = fiber("span", fiber(Counter));
     const r = resolveReactComponent(el)!;
-    expect(r.chain).toEqual(["Counter"]);
+    expect(r.chain).toEqual([{ name: "Counter", file: "/src/Counter.tsx" }]);
   });
 
   it("includes a memo-wrapped component via its $$typeof tag and reads its statics", () => {
@@ -141,7 +144,7 @@ describe("resolveReactComponent", () => {
     const el = document.createElement("span");
     (el as any).__reactFiber$k5 = fiber(providerType, fiber(App));
     const r = resolveReactComponent(el)!;
-    expect(r.chain).toEqual(["App"]);
+    expect(r.chain).toEqual([{ name: "App", file: "/src/App.tsx" }]);
   });
 
   it("falls back to nearest name and file:null when no ancestor has __file", () => {
@@ -151,7 +154,7 @@ describe("resolveReactComponent", () => {
     const r = resolveReactComponent(el)!;
     expect(r.name).toBe("Widget");
     expect(r.file).toBeNull();
-    expect(r.chain).toEqual(["Widget"]);
+    expect(r.chain).toEqual([{ name: "Widget", file: null }]);
   });
 
   it("skips ancestors without __file up to the first that has one", () => {
@@ -163,7 +166,10 @@ describe("resolveReactComponent", () => {
     const r = resolveReactComponent(el)!;
     expect(r.name).toBe("Counter");
     expect(r.file).toBe("/src/Counter.tsx");
-    expect(r.chain).toEqual(["Inline", "Counter"]);
+    expect(r.chain).toEqual([
+      { name: "Inline", file: null },
+      { name: "Counter", file: "/src/Counter.tsx" },
+    ]);
   });
 
   it("stops walking after 1000 ancestors (guard against cyclic/pathological fiber chains)", () => {

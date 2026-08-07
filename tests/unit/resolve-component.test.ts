@@ -22,7 +22,10 @@ describe("resolveComponent", () => {
     const r = resolveComponent(el)!;
     expect(r.name).toBe("Counter");
     expect(r.file).toBe("/src/components/Counter.vue");
-    expect(r.chain).toEqual(["Counter", "App"]);
+    expect(r.chain).toEqual([
+      { name: "Counter", file: "/src/components/Counter.vue" },
+      { name: "App", file: "/src/App.vue" },
+    ]);
   });
 
   it("returns null for an element outside the Vue app", () => {
@@ -41,7 +44,10 @@ describe("resolveComponent", () => {
     const r = resolveComponent(el)!;
     expect(r.name).toBe("Counter");
     expect(r.file).toBe("/src/components/Counter.vue");
-    expect(r.chain).toEqual(["Inline", "Counter"]);
+    expect(r.chain).toEqual([
+      { name: "Inline", file: null },
+      { name: "Counter", file: "/src/components/Counter.vue" },
+    ]);
   });
 
   it("falls back to nearest name and file:null when no __file in chain", () => {
@@ -50,7 +56,7 @@ describe("resolveComponent", () => {
     const r = resolveComponent(el)!;
     expect(r.name).toBe("Widget");
     expect(r.file).toBeNull();
-    expect(r.chain).toEqual(["Widget"]);
+    expect(r.chain).toEqual([{ name: "Widget", file: null }]);
   });
 
   it("derives the name from the file basename when only __file is present", () => {
