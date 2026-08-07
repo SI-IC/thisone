@@ -148,3 +148,29 @@ export function formatElementPath(el: Element): string {
   }
   return c.file ? `${tag} · ${c.name} (${c.file})` : `${tag} · ${c.name}`;
 }
+
+/**
+ * Formats the element's component chain from the root component down to the
+ * picked element: `Name (file) › ... › <tag> startLine:startCol-endLine:endCol`.
+ * Ancestors without a resolvable `__file` render as a bare name. Falls back to
+ * the same CSS-selector format as `formatElementPath` when no component resolves.
+ * @param el - DOM element to format
+ * @returns root-to-leaf breadcrumb text
+ */
+export function formatElementPathFromRoot(el: Element): string {
+  const d = describeElement(el);
+  const c = resolveComponent(el);
+  const tag = `<${d.tag}>`;
+  if (!c || c.chain.length === 0) return `${tag} · ${d.selector}`;
+
+  const breadcrumb = [...c.chain]
+    .reverse()
+    .map((entry) => (entry.file ? `${entry.name} (${entry.file})` : entry.name))
+    .join(" › ");
+
+  if (d.sourceLoc) {
+    const l = d.sourceLoc;
+    return `${breadcrumb} › ${tag} ${l.startLine}:${l.startColumn}-${l.endLine}:${l.endColumn}`;
+  }
+  return `${breadcrumb} › ${tag}`;
+}

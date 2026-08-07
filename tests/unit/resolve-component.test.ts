@@ -4,6 +4,7 @@ import {
   resolveComponent,
   describeElement,
   formatElementPath,
+  formatElementPathFromRoot,
 } from "../../src/client/resolve-component";
 
 function inst(type: any, parent: any = null): any {
@@ -160,6 +161,83 @@ describe("formatElementPath", () => {
     document.body.innerHTML = '<main><button id="go"></button></main>';
     const el = document.getElementById("go")!;
     expect(formatElementPath(el)).toBe("<button> · #go");
+  });
+});
+
+describe("formatElementPathFromRoot", () => {
+  it("builds a root-to-leaf breadcrumb with per-level files and the tag's source location", () => {
+    document.body.innerHTML =
+      '<div data-src-loc="/proj/src/components/Counter.vue:12:3-12:45"></div>';
+    const el = document.querySelector("div")!;
+    (el as any).__vueParentComponent = {
+      type: { __file: "/proj/src/components/Counter.vue", name: "Counter" },
+      parent: {
+        type: { __file: "/proj/src/App.vue", name: "App" },
+        parent: null,
+      },
+    };
+    expect(formatElementPathFromRoot(el)).toBe(
+      "App (/proj/src/App.vue) › Counter (/proj/src/components/Counter.vue) › <div> 12:3-12:45",
+    );
+  });
+
+  it("handles a single-entry chain when the root component itself is picked (boundary)", () => {
+    document.body.innerHTML =
+      '<div data-src-loc="/proj/src/App.vue:1:1-1:10"></div>';
+    const el = document.querySelector("div")!;
+    (el as any).__vueParentComponent = {
+      type: { __file: "/proj/src/App.vue", name: "App" },
+      parent: null,
+    };
+    expect(formatElementPathFromRoot(el)).toBe(
+      "App (/proj/src/App.vue) › <div> 1:1-1:10",
+    );
+  });
+
+  it("renders an ancestor without __file as a bare name (no parens)", () => {
+    document.body.innerHTML = "<span></span>";
+    const el = document.querySelector("span")!;
+    (el as any).__vueParentComponent = {
+      type: { name: "Inline" },
+      parent: {
+        type: { __file: "/proj/src/App.vue", name: "App" },
+        parent: null,
+      },
+    };
+    expect(formatElementPathFromRoot(el)).toBe(
+      "App (/proj/src/App.vue) › Inline › <span>",
+    );
+  });
+
+  it("omits the source-location suffix when data-src-loc is absent (empty)", () => {
+    document.body.innerHTML = "<i></i>";
+    const el = document.querySelector("i")!;
+    (el as any).__vueParentComponent = {
+      type: { __file: "/proj/src/App.vue", name: "App" },
+      parent: null,
+    };
+    expect(formatElementPathFromRoot(el)).toBe("App (/proj/src/App.vue) › <i>");
+  });
+
+  it("falls back to the CSS selector outside the Vue/React app (no component)", () => {
+    document.body.innerHTML = '<main><button id="go"></button></main>';
+    const el = document.getElementById("go")!;
+    expect(formatElementPathFromRoot(el)).toBe("<button> · #go");
+  });
+
+  it("works through the React resolver too (dispatcher)", () => {
+    function App() {}
+    (App as any).__file = "/src/App.tsx";
+    function Counter() {}
+    (Counter as any).__file = "/src/components/Counter.tsx";
+    const el = document.createElement("button");
+    (el as any).__reactFiber$rootpath = {
+      type: Counter,
+      return: { type: App, return: null },
+    };
+    expect(formatElementPathFromRoot(el)).toBe(
+      "App (/src/App.tsx) › Counter (/src/components/Counter.tsx) › <button>",
+    );
   });
 });
 
