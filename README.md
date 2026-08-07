@@ -56,6 +56,7 @@ See `docs/superpowers/specs/2026-08-06-pick-element-design.md` for the full desi
 
 ```
 pnpm install
+pnpm run setup-hooks  # one-time: installs the husky git hooks below
 pnpm build        # -> dist/{index.js, client.js, index.d.ts}
 pnpm test:run     # unit tests
 bash scripts/e2e.sh   # full e2e against examples/demo-app (see tests/e2e/README.md)
@@ -64,6 +65,11 @@ bash scripts/e2e.sh   # full e2e against examples/demo-app (see tests/e2e/README
 Versioning is automatic: a husky `pre-commit` hook bumps the patch version, rebuilds `dist/`, and
 stages it when `src/` changes; a `post-commit` hook tags `v<version>`. For a larger bump run
 `pnpm release minor` (or `major`) before committing.
+
+`setup-hooks` is deliberately not wired to `prepare`: this package is installed by consumers
+straight from git (`dist/` is committed, no build needed), and a `prepare` script would make
+their package manager install our full `devDependencies` to run it — which can recursively
+trigger `pnpm install` in their workspace root.
 
 ## License
 
