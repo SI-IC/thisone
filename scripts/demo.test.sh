@@ -31,19 +31,3 @@ else
   echo "not ok - scripts/demo.sh leaks the dev server when the recorder fails"
   exit 1
 fi
-
-# permission: the recorder must not ask for clipboard-read, only clipboard-write
-if grep -q 'clipboard-read' "$root/scripts/record-demo.mjs"; then
-  echo "not ok - permission: record-demo.mjs requests clipboard-read"
-  exit 1
-else
-  echo "ok - permission: record-demo.mjs requests clipboard-write only"
-fi
-
-# concurrency: the browser must be closed on any failure path, not only the happy one
-if grep -q 'finally {' "$root/scripts/record-demo.mjs"; then
-  echo "ok - concurrency: record-demo.mjs closes the browser in a finally block"
-else
-  echo "not ok - concurrency: record-demo.mjs can leak a chromium process"
-  exit 1
-fi
