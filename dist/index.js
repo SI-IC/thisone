@@ -39382,15 +39382,15 @@ function loadClientBundle() {
     if (existsSync(c)) return readFileSync(c, "utf8");
   }
   throw new Error(
-    "[pick-element] dist/client.js not found \u2014 run `pnpm build` first."
+    "[thisone] dist/client.js not found \u2014 run `pnpm build` first."
   );
 }
-function pickElement(options = {}) {
+function thisone(options = {}) {
   const hotkey = options.hotkey ?? "KeyC";
   const cfgJson = JSON.stringify({ hotkey });
   let isBuild = false;
   return {
-    name: "vite-plugin-pick-element",
+    name: "vite-plugin-thisone",
     apply: "serve",
     enforce: "pre",
     config(_config, env) {
@@ -39415,7 +39415,7 @@ function pickElement(options = {}) {
             {
               tag: "script",
               injectTo: "body",
-              children: `window.__PICK_ELEMENT_CFG__=${cfgJson};
+              children: `window.__THISONE_CFG__=${cfgJson};
 ${client}`
             }
           ]
@@ -39424,8 +39424,8 @@ ${client}`
     }
   };
 }
-var index_default = pickElement;
+var index_default = thisone;
 export {
   index_default as default,
-  pickElement
+  thisone
 };

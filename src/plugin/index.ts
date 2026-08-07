@@ -5,7 +5,7 @@ import type { Plugin } from "vite";
 import { injectSourceLocations as injectVueSourceLocations } from "./inject-src-loc.js";
 import { injectSourceLocations as injectReactSourceLocations } from "./inject-src-loc-react.js";
 
-export interface PickElementOptions {
+export interface ThisoneOptions {
   hotkey?: string;
 }
 
@@ -20,18 +20,18 @@ function loadClientBundle(): string {
     if (existsSync(c)) return readFileSync(c, "utf8");
   }
   throw new Error(
-    "[pick-element] dist/client.js not found — run `pnpm build` first.",
+    "[thisone] dist/client.js not found — run `pnpm build` first.",
   );
 }
 
-export function pickElement(options: PickElementOptions = {}): Plugin {
+export function thisone(options: ThisoneOptions = {}): Plugin {
   const hotkey = options.hotkey ?? "KeyC";
   const cfgJson = JSON.stringify({ hotkey });
 
   let isBuild = false;
 
   return {
-    name: "vite-plugin-pick-element",
+    name: "vite-plugin-thisone",
     apply: "serve",
     enforce: "pre",
 
@@ -59,7 +59,7 @@ export function pickElement(options: PickElementOptions = {}): Plugin {
             {
               tag: "script",
               injectTo: "body" as const,
-              children: `window.__PICK_ELEMENT_CFG__=${cfgJson};\n${client}`,
+              children: `window.__THISONE_CFG__=${cfgJson};\n${client}`,
             },
           ],
         };
@@ -68,4 +68,4 @@ export function pickElement(options: PickElementOptions = {}): Plugin {
   };
 }
 
-export default pickElement;
+export default thisone;

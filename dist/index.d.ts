@@ -1,6 +1,6 @@
 import type { Plugin } from "vite";
-export interface PickElementOptions {
+export interface ThisoneOptions {
     hotkey?: string;
 }
-export declare function pickElement(options?: PickElementOptions): Plugin;
-export default pickElement;
+export declare function thisone(options?: ThisoneOptions): Plugin;
+export default thisone;

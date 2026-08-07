@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import pickElement from "../../src/plugin/index";
+import thisone from "../../src/plugin/index";
 import { injectSourceLocations } from "../../src/plugin/inject-src-loc";
 import { injectSourceLocations as injectReactSourceLocations } from "../../src/plugin/inject-src-loc-react";
 
-type AnyPlugin = ReturnType<typeof pickElement> & Record<string, any>;
+type AnyPlugin = ReturnType<typeof thisone> & Record<string, any>;
 
 function callConfig(plugin: AnyPlugin, command: "serve" | "build") {
   const hook = plugin.config as any;
@@ -38,7 +38,7 @@ describe("plugin transformIndexHtml", () => {
   });
 
   it("injects the inlined client + config in serve mode", () => {
-    const plugin = pickElement({ hotkey: "KeyB" }) as AnyPlugin;
+    const plugin = thisone({ hotkey: "KeyB" }) as AnyPlugin;
     callConfig(plugin, "serve");
     const res = callTransform(plugin, "<html><body></body></html>") as {
       tags: { tag: string; children: string; injectTo: string }[];
@@ -50,11 +50,11 @@ describe("plugin transformIndexHtml", () => {
     expect(tag.children).toContain("__PICK_ELEMENT_CFG__");
     expect(tag.children).toContain('"hotkey":"KeyB"');
     // the real client bundle is inlined
-    expect(tag.children).toContain("__pick_element_root");
+    expect(tag.children).toContain("__thisone_root");
   });
 
   it("does NOT inject in build mode (gating)", () => {
-    const plugin = pickElement() as AnyPlugin;
+    const plugin = thisone() as AnyPlugin;
     callConfig(plugin, "build");
     const html = "<html><body></body></html>";
     const res = callTransform(plugin, html);
@@ -62,21 +62,21 @@ describe("plugin transformIndexHtml", () => {
   });
 
   it("declares apply:'serve'", () => {
-    expect((pickElement() as AnyPlugin).apply).toBe("serve");
+    expect((thisone() as AnyPlugin).apply).toBe("serve");
   });
 
-  it("declares name:'vite-plugin-pick-element'", () => {
-    expect((pickElement() as AnyPlugin).name).toBe("vite-plugin-pick-element");
+  it("declares name:'vite-plugin-thisone'", () => {
+    expect((thisone() as AnyPlugin).name).toBe("vite-plugin-thisone");
   });
 });
 
 describe("plugin transform (.vue source location)", () => {
   it("declares enforce:'pre' so it runs before @vitejs/plugin-vue", () => {
-    expect((pickElement() as AnyPlugin).enforce).toBe("pre");
+    expect((thisone() as AnyPlugin).enforce).toBe("pre");
   });
 
   it("injects data-src-loc into .vue source in serve mode", () => {
-    const plugin = pickElement() as AnyPlugin;
+    const plugin = thisone() as AnyPlugin;
     callConfig(plugin, "serve");
     const src = `<template>\n  <div>hi</div>\n</template>\n`;
     const out = callTransform2(plugin, src, "/proj/src/Counter.vue");
@@ -85,7 +85,7 @@ describe("plugin transform (.vue source location)", () => {
   });
 
   it("does NOT transform in build mode (gating)", () => {
-    const plugin = pickElement() as AnyPlugin;
+    const plugin = thisone() as AnyPlugin;
     callConfig(plugin, "build");
     const src = `<template><div>hi</div></template>`;
     expect(
@@ -94,7 +94,7 @@ describe("plugin transform (.vue source location)", () => {
   });
 
   it("ignores non-.vue ids and .vue sub-requests (?vue&type=...)", () => {
-    const plugin = pickElement() as AnyPlugin;
+    const plugin = thisone() as AnyPlugin;
     callConfig(plugin, "serve");
     expect(
       callTransform2(plugin, "export default {}", "/proj/src/util.ts"),
@@ -111,7 +111,7 @@ describe("plugin transform (.vue source location)", () => {
 
 describe("plugin transform (.tsx/.jsx source location)", () => {
   it("injects data-src-loc into .tsx source in serve mode", () => {
-    const plugin = pickElement() as AnyPlugin;
+    const plugin = thisone() as AnyPlugin;
     callConfig(plugin, "serve");
     const src = `function Foo() {\n  return <div>hi</div>;\n}\n`;
     const out = callTransform2(plugin, src, "/proj/src/Foo.tsx");
@@ -120,7 +120,7 @@ describe("plugin transform (.tsx/.jsx source location)", () => {
   });
 
   it("injects data-src-loc into .jsx source in serve mode", () => {
-    const plugin = pickElement() as AnyPlugin;
+    const plugin = thisone() as AnyPlugin;
     callConfig(plugin, "serve");
     const src = `function Foo() {\n  return <span>hi</span>;\n}\n`;
     const out = callTransform2(plugin, src, "/proj/src/Foo.jsx");
@@ -128,14 +128,14 @@ describe("plugin transform (.tsx/.jsx source location)", () => {
   });
 
   it("does NOT transform .tsx in build mode (gating)", () => {
-    const plugin = pickElement() as AnyPlugin;
+    const plugin = thisone() as AnyPlugin;
     callConfig(plugin, "build");
     const src = `function Foo() { return <div>hi</div>; }`;
     expect(callTransform2(plugin, src, "/proj/src/Foo.tsx")).toBeUndefined();
   });
 
   it("ignores non-.tsx/.jsx/.vue ids", () => {
-    const plugin = pickElement() as AnyPlugin;
+    const plugin = thisone() as AnyPlugin;
     callConfig(plugin, "serve");
     expect(
       callTransform2(plugin, "export const x = 1;", "/proj/src/util.ts"),
