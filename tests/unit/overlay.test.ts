@@ -16,6 +16,9 @@ function pathEl() {
 function img() {
   return shadow().querySelector("img.shot") as HTMLImageElement;
 }
+function pathModeToggle() {
+  return shadow().querySelector(".path-mode-toggle") as HTMLElement;
+}
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
@@ -108,7 +111,7 @@ describe("overlay", () => {
       new MouseEvent("click", { bubbles: true, composed: true }),
     );
     await tick();
-    expect(shadow().querySelector(".path + .status")?.textContent).toBe(
+    expect(shadow().querySelector(".path-row + .status")?.textContent).toBe(
       "Copied",
     );
     o.destroy();
@@ -129,7 +132,7 @@ describe("overlay", () => {
       new MouseEvent("click", { bubbles: true, composed: true }),
     );
     await tick();
-    expect(shadow().querySelector(".path + .status")?.textContent).toBe(
+    expect(shadow().querySelector(".path-row + .status")?.textContent).toBe(
       "Copy failed",
     );
     o.destroy();
@@ -395,5 +398,87 @@ describe("overlay", () => {
     drag(targetToggle(), [20, 20], [200, 200]);
     expect(panel().style.left).toBe(before);
     o.destroy();
+  });
+
+  it("defaults to file-tree path mode with an inactive toggle", async () => {
+    const o = createOverlay();
+    const target = document.createElement("button");
+    document.body.appendChild(target);
+    o.open();
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+
+    expect(pathModeToggle().classList.contains("active")).toBe(false);
+    expect(pathModeToggle().title).toBe("Show path from root component");
+    o.destroy();
+  });
+
+  it("clicking the mode toggle switches to the root-mount path for the same selection", async () => {
+    const o = createOverlay();
+    const target = document.createElement("button");
+    document.body.appendChild(target);
+    (target as any).__vueParentComponent = {
+      type: { __file: "/src/components/Counter.vue", name: "Counter" },
+      parent: {
+        type: { __file: "/src/App.vue", name: "App" },
+        parent: null,
+      },
+    };
+    o.open();
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+    const before = pathEl().textContent;
+
+    pathModeToggle().dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(pathModeToggle().classList.contains("active")).toBe(true);
+    expect(pathModeToggle().title).toBe("Show file-tree path");
+    expect(pathEl().textContent).not.toBe(before);
+    expect(pathEl().textContent).toMatch(/App .*Counter/);
+    o.destroy();
+  });
+
+  it("clicking the mode toggle does not also trigger the path's copy handler (no bubbling)", async () => {
+    vi.spyOn(clipboard, "copyText").mockResolvedValue({ ok: true });
+    const o = createOverlay();
+    const target = document.createElement("button");
+    document.body.appendChild(target);
+    o.open();
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+
+    pathModeToggle().dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    await tick();
+    expect(shadow().querySelector(".path-row + .status")?.textContent).toBe("");
+    o.destroy();
+  });
+
+  it("path mode persists across a fresh overlay instance", async () => {
+    const o1 = createOverlay();
+    const target1 = document.createElement("button");
+    document.body.appendChild(target1);
+    o1.open();
+    target1.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+    pathModeToggle().dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    o1.destroy();
+
+    const o2 = createOverlay();
+    const target2 = document.createElement("span");
+    document.body.appendChild(target2);
+    o2.open();
+    target2.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+    expect(pathModeToggle().classList.contains("active")).toBe(true);
+    o2.destroy();
   });
 });

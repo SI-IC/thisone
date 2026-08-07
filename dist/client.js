@@ -173,6 +173,18 @@
     }
     return c.file ? `${tag} \xB7 ${c.name} (${c.file})` : `${tag} \xB7 ${c.name}`;
   }
+  function formatElementPathFromRoot(el) {
+    const d = describeElement(el);
+    const c = resolveComponent(el);
+    const tag = `<${d.tag}>`;
+    if (!c || c.chain.length === 0) return `${tag} \xB7 ${d.selector}`;
+    const breadcrumb = [...c.chain].reverse().map((entry) => entry.file ? `${entry.name} (${entry.file})` : entry.name).join(" \u203A ");
+    if (d.sourceLoc) {
+      const l = d.sourceLoc;
+      return `${breadcrumb} \u203A ${tag} ${l.startLine}:${l.startColumn}-${l.endLine}:${l.endColumn}`;
+    }
+    return `${breadcrumb} \u203A ${tag}`;
+  }
 
   // node_modules/.pnpm/modern-screenshot@4.7.0/node_modules/modern-screenshot/dist/index.mjs
   var _P = "p".charCodeAt(0);
@@ -1750,6 +1762,22 @@
     }
   }
 
+  // src/client/path-mode-store.ts
+  var MODE_KEY = "thisone:path-mode";
+  function loadPathMode() {
+    try {
+      return localStorage.getItem(MODE_KEY) === "root" ? "root" : "tree";
+    } catch {
+      return "tree";
+    }
+  }
+  function savePathMode(mode) {
+    try {
+      localStorage.setItem(MODE_KEY, mode);
+    } catch {
+    }
+  }
+
   // src/client/overlay.ts
   var HOST_ID = "__thisone_root";
   var STYLE = `
@@ -1781,11 +1809,19 @@
 .target-toggle.active:hover { background: #313244; }
 .body { padding: 12px; }
 .hint { color: #a6adc8; }
+.path-row { display: flex; align-items: center; gap: 6px; }
 .path {
   cursor: pointer; word-break: break-all; padding: 6px; border-radius: 6px;
-  background: #11111b; border: 1px solid #45475a;
+  background: #11111b; border: 1px solid #45475a; flex: 1; min-width: 0;
 }
 .path:hover { border-color: #89b4fa; }
+.path-mode-toggle {
+  cursor: pointer; border: 1px solid #585b70; background: #11111b; color: #a6adc8;
+  padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; flex-shrink: 0;
+}
+.path-mode-toggle:hover { background: #313244; color: #eee; border-color: #89b4fa; }
+.path-mode-toggle.active { color: #89b4fa; border-color: #89b4fa; background: rgba(137,180,250,.12); }
+.path-mode-toggle.active:hover { background: #313244; }
 img.shot {
   display: block; max-width: 100%; margin-top: 8px; cursor: pointer;
   border: 1px solid #45475a; border-radius: 6px;
@@ -1825,6 +1861,12 @@ img.shot:hover { border-color: #89b4fa; }
   function targetIcon(size) {
     return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>`;
   }
+  function folderIcon(size) {
+    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z"/></svg>`;
+  }
+  function branchIcon(size) {
+    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/><path d="M12 7v4M12 11L6 17M12 11l6 6"/></svg>`;
+  }
   var EDGE_BUTTON_SIZE = 44;
   var DEFAULT_TARGET_POSITION = { edge: "right", offset: 0.5 };
   function createOverlay() {
@@ -1845,6 +1887,7 @@ img.shot:hover { border-color: #89b4fa; }
     let currentShotUrl = null;
     let dragOffset = null;
     let targetEnabled = false;
+    let pathMode = "tree";
     let targetPosition = DEFAULT_TARGET_POSITION;
     let targetDragging = false;
     let pickId = 0;
@@ -1922,6 +1965,7 @@ img.shot:hover { border-color: #89b4fa; }
       targetBtn.title = "Right-click drag to move";
       root.append(pickHint, box, tip, targetBtn);
       targetEnabled = loadTargetEnabled();
+      pathMode = loadPathMode();
       targetPosition = (_a2 = loadTargetPosition()) != null ? _a2 : DEFAULT_TARGET_POSITION;
       targetToggle.classList.toggle("active", targetEnabled);
       targetBtn.classList.toggle("hidden", !targetEnabled);
@@ -1954,15 +1998,34 @@ img.shot:hover { border-color: #89b4fa; }
       const myPickId = ++pickId;
       replaceShotUrl(null);
       body.innerHTML = "";
-      const pathText = formatElementPath(target);
+      const pathRow = el("div", "path-row");
       const pathEl = el("div", "path");
-      pathEl.textContent = pathText;
+      const modeToggle = el("button", "path-mode-toggle");
       const pathStatus = el("div", "status");
+      function currentPathText() {
+        return pathMode === "tree" ? formatElementPath(target) : formatElementPathFromRoot(target);
+      }
+      function renderPathText() {
+        pathEl.textContent = currentPathText();
+        modeToggle.innerHTML = pathMode === "tree" ? folderIcon(14) : branchIcon(14);
+        modeToggle.classList.toggle("active", pathMode === "root");
+        modeToggle.title = pathMode === "tree" ? "Show path from root component" : "Show file-tree path";
+      }
+      renderPathText();
       pathEl.addEventListener("click", () => {
-        void copyText(pathText).then((r) => showStatus(pathStatus, r.ok));
+        void copyText(currentPathText()).then(
+          (r) => showStatus(pathStatus, r.ok)
+        );
       });
+      modeToggle.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        pathMode = pathMode === "tree" ? "root" : "tree";
+        savePathMode(pathMode);
+        renderPathText();
+      });
+      pathRow.append(pathEl, modeToggle);
       const imgStatus = el("div", "status");
-      body.append(pathEl, pathStatus);
+      body.append(pathRow, pathStatus);
       captureElementScreenshot(target, host).then((blob) => {
         if (myPickId !== pickId) return;
         const img = el("img", "shot");
