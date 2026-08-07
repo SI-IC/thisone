@@ -39219,6 +39219,7 @@ traverse3.cache = cache;
 var traverse4 = traverse3.default ?? traverse3;
 var generate2 = generate.default ?? generate;
 var HOC_NAMES = /* @__PURE__ */ new Set(["memo", "forwardRef"]);
+var HOC_IMPORT_SOURCES = /* @__PURE__ */ new Set(["react", "preact/compat"]);
 function isPascalCase(name) {
   return /^[A-Z]/.test(name);
 }
@@ -39226,7 +39227,7 @@ function collectReactAliases(programNode) {
   const hocLocalNames = /* @__PURE__ */ new Map();
   const namespaceLocalNames = /* @__PURE__ */ new Set();
   for (const stmt of programNode.body) {
-    if (!isImportDeclaration(stmt) || stmt.source.value !== "react") {
+    if (!isImportDeclaration(stmt) || !HOC_IMPORT_SOURCES.has(String(stmt.source.value))) {
       continue;
     }
     for (const spec of stmt.specifiers) {
