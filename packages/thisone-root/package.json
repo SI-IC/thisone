@@ -1,5 +1,5 @@
 {
-  "name": "thisone",
+  "name": "@si-ic/thisone",
   "version": "1.0.0",
   "description": "Point at any element in your Vite dev preview and hand your AI agent its exact source location and a screenshot. Alias of vite-plugin-thisone.",
   "type": "module",
