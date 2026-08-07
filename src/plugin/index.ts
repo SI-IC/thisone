@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { Plugin } from "vite";
 import { injectSourceLocations as injectVueSourceLocations } from "./inject-src-loc.js";
 import { injectSourceLocations as injectReactSourceLocations } from "./inject-src-loc-react.js";
+import { injectSourceLocations as injectSvelteSourceLocations } from "./inject-src-loc-svelte.js";
 import {
   PREACT_HOOK_VIRTUAL_ID,
   PREACT_HOOK_RESOLVED_ID,
@@ -61,6 +62,7 @@ export function thisone(options: ThisoneOptions = {}): Plugin {
     transform(code: string, id: string) {
       if (isBuild) return;
       if (id.endsWith(".vue")) return injectVueSourceLocations(code, id);
+      if (id.endsWith(".svelte")) return injectSvelteSourceLocations(code, id);
       if (id.endsWith(".tsx") || id.endsWith(".jsx")) {
         return injectReactSourceLocations(code, id);
       }
