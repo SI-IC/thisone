@@ -2,18 +2,15 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import gifenc from "gifenc";
-import { PNG } from "pngjs";
 import { chromium } from "playwright";
+import { encodeGif, parsePort } from "./demo-gif.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const port = Number(process.argv[2]);
-if (!Number.isInteger(port) || port <= 0) {
+const port = parsePort(process.argv[2]);
+if (port === null) {
   console.error("usage: record-demo.mjs <port>");
   process.exit(1);
 }
-
-const { GIFEncoder, applyPalette, quantize } = gifenc;
 
 const WIDTH = 900;
 const HEIGHT = 700;
@@ -82,19 +79,7 @@ if (frames.length === 0) {
   process.exit(1);
 }
 
-const encoder = GIFEncoder();
-for (const buf of frames) {
-  const { data, width, height } = PNG.sync.read(buf);
-  const palette = quantize(data, 256, { format: "rgb565" });
-  const index = applyPalette(data, palette, "rgb565");
-  encoder.writeFrame(index, width, height, {
-    palette,
-    delay: FRAME_MS,
-  });
-}
-encoder.finish();
-
 const out = resolve(root, "docs/demo.gif");
 mkdirSync(dirname(out), { recursive: true });
-writeFileSync(out, encoder.bytes());
+writeFileSync(out, encodeGif(frames, FRAME_MS));
 console.log(`record-demo: wrote ${out} (${frames.length} frames)`);
