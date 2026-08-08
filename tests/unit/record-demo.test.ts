@@ -209,7 +209,7 @@ describe("record-demo browser lifecycle", () => {
 describe("record-demo scenes", () => {
   it("runs every scene in order inside the capture loop's try block", () => {
     expect(SOURCE).toMatch(
-      /const SCENES = \[scenePickAndScreenshot, sceneCopyPath\];/,
+      /const SCENES = \[scenePickAndScreenshot, sceneCopyPath, sceneClaudeCodeChat\];/,
     );
     expect(SOURCE).toMatch(/for \(const scene of SCENES\) \{/);
   });

@@ -206,7 +206,52 @@ async function sceneCopyPath(ctx) {
   await page.waitForTimeout(1500);
 }
 
-const SCENES = [scenePickAndScreenshot, sceneCopyPath];
+/**
+ * Slides up a synthetic Claude Code terminal, sends the already-copied path
+ * with a one-line request, and turns the picked button red once "Claude"
+ * replies — the payoff frame docs/demo.gif loops from.
+ * @param ctx - shared page/glideTo/clickAt from recordDemo
+ */
+async function sceneClaudeCodeChat(ctx) {
+  const { page } = ctx;
+  const copiedPath = await page
+    .locator("#__thisone_root >> css=.path")
+    .innerText();
+
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(500);
+
+  await page.evaluate(() => window.__demoTerminal.slideUp());
+  await page.waitForTimeout(450);
+
+  await page.evaluate(
+    (text) => window.__demoTerminal.typeText(text),
+    "make the button red",
+  );
+  await page.evaluate(
+    (path) => window.__demoTerminal.appendPath(path),
+    copiedPath,
+  );
+  await page.waitForTimeout(400);
+
+  await page.evaluate(() => window.__demoTerminal.setStatus("thinking"));
+  await page.waitForTimeout(900);
+
+  await page.evaluate(() => window.__demoTerminal.setStatus("ok"));
+  await page.evaluate(() => {
+    const btn = [...document.querySelectorAll("button")].find((b) =>
+      b.textContent.includes("count is"),
+    );
+    btn.style.transition =
+      "background-color 300ms ease-out, border-color 300ms ease-out, color 300ms ease-out";
+    btn.style.backgroundColor = "#dc2626";
+    btn.style.borderColor = "#dc2626";
+    btn.style.color = "#ffffff";
+  });
+  await page.waitForTimeout(1200);
+}
+
+const SCENES = [scenePickAndScreenshot, sceneCopyPath, sceneClaudeCodeChat];
 
 /**
  * Drives the Vue demo app through a pick-and-copy run and writes docs/demo.gif.
