@@ -315,9 +315,13 @@ import {
   NodeTypes,
   ElementTypes
 } from "@vue/compiler-core";
+
+// src/plugin/escape-attr.ts
 function escapeAttr(value) {
   return value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+
+// src/plugin/inject-src-loc.ts
 function collectInsertions(nodes, file2, out) {
   for (const node of nodes) {
     switch (node.type) {
@@ -3354,14 +3358,14 @@ var flow = (superClass) => class FlowParserMixin extends superClass {
     super.checkParams(node, false, true);
     this.scope.exit();
   }
-  forwardNoArrowParamsConversionAt(node, parse4) {
+  forwardNoArrowParamsConversionAt(node, parse5) {
     let result;
     if (this.state.noArrowParamsConversionAt.includes(this.offsetToSourcePos(node.start))) {
       this.state.noArrowParamsConversionAt.push(this.state.start);
-      result = parse4();
+      result = parse5();
       this.state.noArrowParamsConversionAt.pop();
     } else {
-      result = parse4();
+      result = parse5();
     }
     return result;
   }
@@ -39372,6 +39376,103 @@ function injectSourceLocations2(source, relFile) {
   }
 }
 
+// src/plugin/inject-src-loc-svelte.ts
+import { parse as parse4 } from "svelte/compiler";
+function offsetToLineColumn(source, offset) {
+  let line = 1;
+  let column = 1;
+  for (let i = 0; i < offset; i++) {
+    if (source[i] === "\n") {
+      line++;
+      column = 1;
+    } else {
+      column++;
+    }
+  }
+  return { line, column };
+}
+function collectInsertions2(nodes, source, file2, out) {
+  for (const node of nodes) {
+    switch (node.type) {
+      case "RegularElement": {
+        const start = offsetToLineColumn(source, node.start);
+        const end = offsetToLineColumn(source, node.end);
+        const value = `${escapeAttr(file2)}:${start.line}:${start.column}-${end.line}:${end.column}`;
+        out.push({
+          offset: node.start + 1 + (node.name?.length ?? 0),
+          text: ` data-src-loc="${value}"`
+        });
+        if (node.fragment)
+          collectInsertions2(node.fragment.nodes, source, file2, out);
+        break;
+      }
+      case "IfBlock":
+        if (node.consequent)
+          collectInsertions2(node.consequent.nodes, source, file2, out);
+        if (node.alternate)
+          collectInsertions2(node.alternate.nodes, source, file2, out);
+        break;
+      case "EachBlock":
+        if (node.body) collectInsertions2(node.body.nodes, source, file2, out);
+        if (node.fallback)
+          collectInsertions2(node.fallback.nodes, source, file2, out);
+        break;
+      case "AwaitBlock":
+        if (node.pending)
+          collectInsertions2(node.pending.nodes, source, file2, out);
+        if (node.then) collectInsertions2(node.then.nodes, source, file2, out);
+        if (node.catch) collectInsertions2(node.catch.nodes, source, file2, out);
+        break;
+      case "KeyBlock":
+        if (node.fragment)
+          collectInsertions2(node.fragment.nodes, source, file2, out);
+        break;
+      case "SnippetBlock":
+        if (node.body) collectInsertions2(node.body.nodes, source, file2, out);
+        break;
+      case "Component":
+      case "SvelteComponent":
+      case "SvelteSelf":
+      case "SvelteElement":
+      case "SlotElement":
+      case "SvelteBoundary":
+      case "SvelteWindow":
+      case "SvelteBody":
+      case "SvelteHead":
+        if (node.fragment)
+          collectInsertions2(node.fragment.nodes, source, file2, out);
+        break;
+      default:
+        break;
+    }
+  }
+}
+function injectSourceLocations3(source, file2) {
+  let ast;
+  try {
+    ast = parse4(source, { filename: file2, modern: true });
+  } catch {
+    return source;
+  }
+  if (!ast?.fragment?.nodes) return source;
+  const insertions = [];
+  try {
+    collectInsertions2(ast.fragment.nodes, source, file2, insertions);
+  } catch {
+    return source;
+  }
+  if (insertions.length === 0) return source;
+  insertions.sort((a, b2) => a.offset - b2.offset);
+  const parts = [];
+  let cursor = 0;
+  for (const ins of insertions) {
+    parts.push(source.slice(cursor, ins.offset), ins.text);
+    cursor = ins.offset;
+  }
+  parts.push(source.slice(cursor));
+  return parts.join("");
+}
+
 // src/plugin/preact-hook.ts
 var PREACT_HOOK_VIRTUAL_ID = "virtual:thisone-preact-hook";
 var PREACT_HOOK_RESOLVED_ID = "\0" + PREACT_HOOK_VIRTUAL_ID;
@@ -39428,6 +39529,7 @@ function thisone(options = {}) {
     transform(code2, id) {
       if (isBuild) return;
       if (id.endsWith(".vue")) return injectSourceLocations(code2, id);
+      if (id.endsWith(".svelte")) return injectSourceLocations3(code2, id);
       if (id.endsWith(".tsx") || id.endsWith(".jsx")) {
         return injectSourceLocations2(code2, id);
       }

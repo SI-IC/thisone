@@ -6,6 +6,7 @@
 import { baseName } from "./base-name";
 import { resolveReactComponent } from "./resolve-component-react";
 import { resolvePreactComponent } from "./resolve-component-preact";
+import { resolveSvelteComponent } from "./resolve-component-svelte";
 
 export interface SourceLocation {
   file: string;
@@ -50,7 +51,9 @@ export function resolveComponent(el: Element | null): ResolvedComponent | null {
   if ((el as any).__vueParentComponent) return resolveVueComponent(el);
   const react = resolveReactComponent(el);
   if (react) return react;
-  return resolvePreactComponent(el);
+  const preact = resolvePreactComponent(el);
+  if (preact) return preact;
+  return resolveSvelteComponent(el);
 }
 
 function resolveVueComponent(el: Element | null): ResolvedComponent | null {

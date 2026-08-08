@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import thisone from "../../src/plugin/index";
 import { injectSourceLocations } from "../../src/plugin/inject-src-loc";
 import { injectSourceLocations as injectReactSourceLocations } from "../../src/plugin/inject-src-loc-react";
+import { injectSourceLocations as injectSvelteSourceLocations } from "../../src/plugin/inject-src-loc-svelte";
 import {
   PREACT_HOOK_VIRTUAL_ID,
   PREACT_HOOK_RESOLVED_ID,
@@ -265,5 +266,45 @@ describe("plugin Preact virtual module wiring", () => {
   it("load ignores unrelated ids", () => {
     const plugin = thisone() as AnyPlugin;
     expect(callLoad(plugin, "some/other/module")).toBeUndefined();
+  });
+});
+
+describe("plugin transform dispatch — Svelte", () => {
+  it("routes .svelte files through the Svelte source-location transform", () => {
+    const plugin = thisone() as AnyPlugin;
+    callConfig(plugin, "serve");
+    const src = `<div>hi</div>\n`;
+    const file = "/proj/src/Widget.svelte";
+    const result = callTransform2(plugin, src, file);
+    expect(result).toBe(injectSvelteSourceLocations(src, file));
+    expect(result).toContain("data-src-loc=");
+  });
+
+  it("does not transform .svelte files during a production build", () => {
+    const plugin = thisone() as AnyPlugin;
+    callConfig(plugin, "build");
+    const result = callTransform2(
+      plugin,
+      `<div>hi</div>\n`,
+      "/proj/src/Widget.svelte",
+    );
+    expect(result).toBeUndefined();
+  });
+
+  it("leaves .vue/.tsx routing untouched (regression)", () => {
+    const plugin = thisone() as AnyPlugin;
+    callConfig(plugin, "serve");
+    const vueResult = callTransform2(
+      plugin,
+      `<template><div>x</div></template>\n`,
+      "/proj/src/Widget.vue",
+    );
+    expect(vueResult).toContain("data-src-loc=");
+    const untouched = callTransform2(
+      plugin,
+      "const x = 1;",
+      "/proj/src/util.ts",
+    );
+    expect(untouched).toBeUndefined();
   });
 });

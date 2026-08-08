@@ -98,11 +98,33 @@ bash scripts/e2e-preact.sh
 
 Same `link:../..` wiring note as the other demo apps applies to `examples/demo-app-preact`.
 
+## Svelte harness
+
+`thisone-svelte.e2e.mjs` covers what's specific to the Svelte path against `examples/demo-app-svelte/`
+(a real `@sveltejs/vite-plugin-svelte` app — Svelte has no "bare, no official plugin" mode the way
+React/Preact do, since `.svelte` files require the official compiler plugin to build at all):
+source-location + component-name resolution 3 components deep (`App` → `{#if}` → `Panel` →
+`Counter`, exercising the if-frame-skip in the `__svelte_meta.parent` walk) and the root-mounted
+component, each resolved directly from `el.__svelte_meta` — a mechanism Svelte's own compiler
+attaches in dev mode, not any thisone-installed hook — plus the same prod-build exclusion check as
+the other harnesses. Panel mechanics (drag, clipboard, screenshot, hotkey) are framework-agnostic
+and already fully covered by `thisone.e2e.mjs` against the Vue demo app — this script doesn't
+repeat them.
+
+Run:
+
+```
+bash scripts/e2e-svelte.sh
+```
+
+Same `link:../..` wiring note as the other demo apps applies to `examples/demo-app-svelte`.
+
 ## Browsing both demos live
 
-`scripts/dev-demo.sh` fronts `examples/demo-app` (Vue), `examples/demo-app-react` (React), and
-`examples/demo-app-preact` (Preact) with a single dev server on port 3000: the Vue app proxies
-`/react-demo/**` and `/preact-demo/**` (including each app's HMR websocket) to two second,
-loopback-only Vite instances. Each app's header has a Vue/React/Preact nav link to switch between
-them without touching the URL bar's port. Only used for manually poking at the picker in a
-browser — not part of any e2e/unit suite.
+`scripts/dev-demo.sh` fronts `examples/demo-app` (Vue), `examples/demo-app-react` (React),
+`examples/demo-app-preact` (Preact), and `examples/demo-app-svelte` (Svelte) with a single dev
+server on port 3000: the Vue app proxies `/react-demo/**`, `/preact-demo/**`, and
+`/svelte-demo/**` (including each app's HMR websocket) to three second, loopback-only Vite
+instances. Each app's header has a Vue/React/Preact/Svelte nav link to switch between them
+without touching the URL bar's port. Only used for manually poking at the picker in a browser —
+not part of any e2e/unit suite.

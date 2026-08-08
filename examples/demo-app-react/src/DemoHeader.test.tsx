@@ -8,6 +8,7 @@ describe("DemoHeader", () => {
     expect(html).toMatch(/<a href="\/react-demo\/" class="active">React<\/a>/);
     expect(html).toMatch(/<a href="\/">Vue<\/a>/);
     expect(html).toMatch(/<a href="\/preact-demo\/">Preact<\/a>/);
+    expect(html).toMatch(/<a href="\/svelte-demo\/">Svelte<\/a>/);
   });
 
   it('marks the "Vue" link active when active="vue"', () => {
@@ -15,6 +16,7 @@ describe("DemoHeader", () => {
     expect(html).toMatch(/<a href="\/" class="active">Vue<\/a>/);
     expect(html).toMatch(/<a href="\/react-demo\/">React<\/a>/);
     expect(html).toMatch(/<a href="\/preact-demo\/">Preact<\/a>/);
+    expect(html).toMatch(/<a href="\/svelte-demo\/">Svelte<\/a>/);
   });
 
   it('marks the "Preact" link active when active="preact"', () => {
@@ -23,6 +25,17 @@ describe("DemoHeader", () => {
     expect(html).toMatch(/<a href="\/react-demo\/">React<\/a>/);
     expect(html).toMatch(
       /<a href="\/preact-demo\/" class="active">Preact<\/a>/,
+    );
+    expect(html).toMatch(/<a href="\/svelte-demo\/">Svelte<\/a>/);
+  });
+
+  it('marks the "Svelte" link active when active="svelte"', () => {
+    const html = renderToStaticMarkup(<DemoHeader active="svelte" />);
+    expect(html).toMatch(/<a href="\/">Vue<\/a>/);
+    expect(html).toMatch(/<a href="\/react-demo\/">React<\/a>/);
+    expect(html).toMatch(/<a href="\/preact-demo\/">Preact<\/a>/);
+    expect(html).toMatch(
+      /<a href="\/svelte-demo\/" class="active">Svelte<\/a>/,
     );
   });
 });

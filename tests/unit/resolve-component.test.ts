@@ -369,3 +369,58 @@ describe("resolveComponent dispatcher — Preact", () => {
     expect(resolveComponent(document.createElement("i"))).toBeNull();
   });
 });
+
+describe("resolveComponent dispatcher — Svelte", () => {
+  it("dispatches to the Svelte resolver when __svelte_meta is present (no Vue/React/Preact markers)", () => {
+    const el = document.createElement("span");
+    (el as any).__svelte_meta = {
+      loc: { file: "/src/Widget.svelte", line: 1, column: 0 },
+      parent: null,
+    };
+    const r = resolveComponent(el)!;
+    expect(r.name).toBe("Widget");
+    expect(r.file).toBe("/src/Widget.svelte");
+  });
+
+  it("prefers the Vue resolver over __svelte_meta when both are present", () => {
+    const el = document.createElement("span");
+    (el as any).__vueParentComponent = {
+      type: { name: "VueWidget" },
+      parent: null,
+    };
+    (el as any).__svelte_meta = {
+      loc: { file: "/src/Widget.svelte", line: 1, column: 0 },
+      parent: null,
+    };
+    expect(resolveComponent(el)!.name).toBe("VueWidget");
+  });
+
+  it("prefers the React resolver over __svelte_meta when both are present", () => {
+    function ReactWidget() {}
+    const el = document.createElement("span");
+    (el as any).__reactFiber$sveltetest = { type: ReactWidget, return: null };
+    (el as any).__svelte_meta = {
+      loc: { file: "/src/Widget.svelte", line: 1, column: 0 },
+      parent: null,
+    };
+    expect(resolveComponent(el)!.name).toBe("ReactWidget");
+  });
+
+  it("prefers the Preact resolver over __svelte_meta when both are present", () => {
+    const el = document.createElement("span");
+    const map = new WeakMap<Element, any>();
+    map.set(el, { type: function PreactWidget() {}, __e: el, __: null });
+    (window as any).__THISONE_PREACT_MAP__ = map;
+    (el as any).__svelte_meta = {
+      loc: { file: "/src/Widget.svelte", line: 1, column: 0 },
+      parent: null,
+    };
+    const name = resolveComponent(el)!.name;
+    delete (window as any).__THISONE_PREACT_MAP__;
+    expect(name).toBe("PreactWidget");
+  });
+
+  it("still returns null when no resolver claims the element", () => {
+    expect(resolveComponent(document.createElement("i"))).toBeNull();
+  });
+});
