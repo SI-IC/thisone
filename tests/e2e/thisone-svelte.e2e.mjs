@@ -60,8 +60,14 @@ try {
 
   const panel = page.locator("#__thisone_root >> css=.panel");
   const pathEl = page.locator("#__thisone_root >> css=.path");
-  const pathModeToggle = page.locator(
-    "#__thisone_root >> css=.path-mode-toggle",
+  const settingsHeader = page.locator(
+    "#__thisone_root >> css=.settings-header",
+  );
+  const pathModeRoot = page.locator(
+    '#__thisone_root >> css=input[name="path-mode"][value="root"]',
+  );
+  const pathModeTree = page.locator(
+    '#__thisone_root >> css=input[name="path-mode"][value="tree"]',
   );
 
   await page.keyboard.down("Alt");
@@ -86,14 +92,17 @@ try {
   await check(
     "root-mount path mode shows the full breadcrumb, skipping the {#if} frame between App and Panel",
     async () => {
-      await pathModeToggle.click();
+      await settingsHeader.click();
+      await pathModeRoot.waitFor({ state: "visible", timeout: 2000 });
+      await pathModeRoot.click();
       await pathEl.waitFor({ state: "visible", timeout: 2000 });
       const text = await pathEl.textContent();
       assert.match(
         text ?? "",
         /^App \(.*App\.svelte\) › Panel \(.*Panel\.svelte\) › Counter \(.*Counter\.svelte\) › <button>/,
       );
-      await pathModeToggle.click();
+      await pathModeTree.click();
+      await settingsHeader.click();
     },
   );
 
