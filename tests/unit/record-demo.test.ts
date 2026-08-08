@@ -185,6 +185,17 @@ describe("synthetic terminal", () => {
     );
   });
 
+  it("deleted-resource: fails loudly instead of crashing on .style when the Counter button can't be found", () => {
+    expect(SOURCE).toMatch(
+      /if \(!btn\) throw new Error\(`terminal: no button matching "\$\{text\}" found`\);/,
+    );
+  });
+
+  it("uses one shared constant for the Counter button's text, not a string repeated across lookups", () => {
+    expect(SOURCE).toContain('COUNTER_BUTTON_TEXT = "count is"');
+    expect(SOURCE).not.toContain('has-text("count is")');
+  });
+
   it("registers the outro scene last, after pick-and-screenshot and copy-path", () => {
     expect(SOURCE).toMatch(
       /const SCENES = \[\s*scenePickAndScreenshot,\s*sceneCopyPath,\s*sceneClaudeCodeChat,?\s*\];/,
