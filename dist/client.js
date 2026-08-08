@@ -1990,9 +1990,6 @@
 .settings-body {
   padding: 0 10px 8px;
 }
-.settings-body.hidden {
-  display: none !important;
-}
 .hint { color: #a6adc8; }
 .path-row { display: flex; align-items: center; gap: 6px; }
 .path {
@@ -2006,12 +2003,7 @@
 .setting-group:first-child {
   margin-top: 0;
 }
-.setting-title {
-  color: #cdd6f4;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-.section-title {
+.setting-title, .section-title {
   color: #cdd6f4;
   font-weight: 600;
   margin-bottom: 4px;
@@ -2024,9 +2016,6 @@
   align-items: center;
   gap: 6px;
   padding: 4px 0 2px 18px;
-}
-.padding-row.hidden {
-  display: none !important;
 }
 .padding-row input {
   width: 60px;
@@ -2196,6 +2185,8 @@ img.shot:hover { border-color: #89b4fa; }
       body = el("div", "body");
       const settings = el("div", "settings");
       const settingsHeader = el("div", "settings-header");
+      settingsHeader.tabIndex = 0;
+      settingsHeader.setAttribute("role", "button");
       const settingsArrow = el("span", "settings-arrow");
       settingsArrow.textContent = "\u25B8";
       const settingsLabel = el("span");
@@ -2206,11 +2197,20 @@ img.shot:hover { border-color: #89b4fa; }
       const settingsExpanded = loadSettingsExpanded();
       settingsBody.classList.toggle("hidden", !settingsExpanded);
       settingsArrow.classList.toggle("expanded", settingsExpanded);
-      settingsHeader.addEventListener("click", () => {
+      settingsHeader.setAttribute("aria-expanded", String(settingsExpanded));
+      function toggleSettings() {
         const expanded = settingsBody.classList.contains("hidden");
         settingsBody.classList.toggle("hidden", !expanded);
         settingsArrow.classList.toggle("expanded", expanded);
+        settingsHeader.setAttribute("aria-expanded", String(expanded));
         saveSettingsExpanded(expanded);
+      }
+      settingsHeader.addEventListener("click", toggleSettings);
+      settingsHeader.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          if (ev.key === " ") ev.preventDefault();
+          toggleSettings();
+        }
       });
       const PATH_MODE_HELP = {
         tree: "Show file-tree path",
@@ -2235,6 +2235,7 @@ img.shot:hover { border-color: #89b4fa; }
         const qmark = el("span", "qmark");
         qmark.textContent = "?";
         qmark.title = PATH_MODE_HELP[mode];
+        qmark.setAttribute("aria-label", PATH_MODE_HELP[mode]);
         input.addEventListener("change", () => {
           pathMode = mode;
           savePathMode(pathMode);
@@ -2276,10 +2277,11 @@ img.shot:hover { border-color: #89b4fa; }
       const paddingLabel = el("label");
       paddingLabel.htmlFor = "thisone-padding";
       paddingLabel.textContent = "Padding, px";
+      const initialScreenshotPadding = loadScreenshotPadding();
       paddingInput.type = "number";
       paddingInput.id = "thisone-padding";
       paddingInput.min = "0";
-      paddingInput.value = String(loadScreenshotPadding());
+      paddingInput.value = String(initialScreenshotPadding);
       paddingInput.addEventListener("change", () => {
         const parsed = Number(paddingInput.value);
         screenshotPadding = Number.isFinite(parsed) && parsed >= 0 ? parsed : screenshotPadding;
@@ -2291,7 +2293,7 @@ img.shot:hover { border-color: #89b4fa; }
       screenshotGroup.appendChild(paddingRow);
       settingsBody.appendChild(screenshotGroup);
       screenshotEnabled = loadScreenshotEnabled();
-      screenshotPadding = loadScreenshotPadding();
+      screenshotPadding = initialScreenshotPadding;
       screenshotRadios[screenshotEnabled ? "yes" : "no"].checked = true;
       paddingRow.classList.toggle("hidden", !screenshotEnabled);
       panel.append(header, settings, body);
@@ -2326,6 +2328,7 @@ img.shot:hover { border-color: #89b4fa; }
       win.addEventListener("beforeunload", cancelPick);
     }
     function renderEmpty() {
+      currentTarget = null;
       body.innerHTML = "";
       const hint = el("div", "hint");
       hint.textContent = "Select an element";
@@ -2441,6 +2444,7 @@ img.shot:hover { border-color: #89b4fa; }
     }
     function startPick() {
       pickHint.classList.remove("hidden");
+      applyPickHintPosition();
       doc.addEventListener("mousemove", onMove, true);
       doc.addEventListener("click", onClick, true);
       doc.addEventListener("keydown", onKey, true);

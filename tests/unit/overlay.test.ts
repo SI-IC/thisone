@@ -799,4 +799,100 @@ describe("overlay", () => {
     expect(pickHint().style.transform).toBe("none");
     o.destroy();
   });
+
+  it("closing and reopening the panel clears the stale selection, so changing a Settings value shows the empty hint again", async () => {
+    const o = createOverlay();
+    const target = document.createElement("button");
+    document.body.appendChild(target);
+    o.open();
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+    expect(pathEl()).toBeTruthy();
+
+    (shadow().querySelector(".close") as HTMLElement).click();
+    expect(o.isOpen()).toBe(false);
+
+    o.open();
+    expect(shadow().querySelector(".hint")?.textContent).toMatch(
+      /select an element/i,
+    );
+
+    pathModeRadio("root").click();
+    await tick();
+    expect(shadow().querySelector(".hint")?.textContent).toMatch(
+      /select an element/i,
+    );
+    expect(pathEl()).toBeNull();
+
+    screenshotRadio("no").click();
+    await tick();
+    expect(shadow().querySelector(".hint")?.textContent).toMatch(
+      /select an element/i,
+    );
+    expect(pathEl()).toBeNull();
+    o.destroy();
+  });
+
+  it("re-clamps the pick hint's horizontal position against its real (stubbed nonzero) width once startPick shows it", () => {
+    const savedOffset = 900;
+    localStorage.setItem("thisone:pickhint-x", JSON.stringify(savedOffset));
+    Object.defineProperty(window, "innerWidth", {
+      value: 1000,
+      configurable: true,
+    });
+
+    const o = createOverlay();
+    o.open();
+    const hint = pickHint();
+    Object.defineProperty(hint, "offsetWidth", {
+      value: 220,
+      configurable: true,
+    });
+
+    expect(parseFloat(hint.style.left)).toBe(900);
+
+    (shadow().querySelector(".close") as HTMLElement).click();
+    o.open();
+
+    const left = parseFloat(hint.style.left);
+    expect(left + 220).toBeLessThanOrEqual(1000);
+    o.destroy();
+  });
+
+  it("settings-header is keyboard accessible with aria-expanded kept in sync", () => {
+    const o = createOverlay();
+    o.open();
+    const header = settingsHeader();
+    expect(header.getAttribute("role")).toBe("button");
+    expect(header.tabIndex).toBe(0);
+    expect(header.getAttribute("aria-expanded")).toBe("false");
+
+    header.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+    expect(settingsBody().classList.contains("hidden")).toBe(false);
+    expect(header.getAttribute("aria-expanded")).toBe("true");
+
+    header.dispatchEvent(
+      new KeyboardEvent("keydown", { key: " ", bubbles: true }),
+    );
+    expect(settingsBody().classList.contains("hidden")).toBe(true);
+    expect(header.getAttribute("aria-expanded")).toBe("false");
+    o.destroy();
+  });
+
+  it("each .qmark tooltip has a non-empty aria-label mirroring its title", () => {
+    const o = createOverlay();
+    o.open();
+    const qmarks = shadow().querySelectorAll(".qmark");
+    expect(qmarks.length).toBeGreaterThan(0);
+    qmarks.forEach((q) => {
+      const el = q as HTMLElement;
+      expect(el.getAttribute("aria-label")).toBe(el.title);
+      expect(el.getAttribute("aria-label")?.length).toBeGreaterThan(0);
+    });
+    o.destroy();
+  });
 });

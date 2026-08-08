@@ -31,8 +31,9 @@ What lands in the paste:
 ```
 
 Tag, component name, and the exact source span — file, start line:column, end line:column. One click
-on the screenshot instead, and you paste the element as a PNG with 30px of real surrounding page on
-each side, so the agent sees the misalignment rather than reading about it.
+on the screenshot instead, and you paste the element as a PNG with (by default) 30px of real
+surrounding page on each side — configurable in Settings — so the agent sees the misalignment rather
+than reading about it.
 
 ## Quickstart
 
@@ -82,8 +83,8 @@ It degrades instead of disappearing. No resolvable source location, but a known 
 `<button> · Counter (…/Counter.vue)`. No component at all: `<button> · main > div > button`.
 
 Clicking the screenshot copies a PNG of the element to the clipboard, padded with 30px of the real
-page around it — enough context to judge spacing and alignment, cropped tight enough to stay about
-one element.
+page around it by default (configurable in Settings) — enough context to judge spacing and
+alignment, cropped tight enough to stay about one element.
 
 Both are plain clipboard writes. Nothing is uploaded, nothing is stored.
 
@@ -100,6 +101,17 @@ thisone({ hotkey: "KeyB" }); // Alt+B instead of Alt+C
 The panel is draggable and remembers where you left it. The icon button in its header enables an
 edge-docked quick-access button — off by default, always on screen once enabled, right-click-drag to
 move it around the viewport perimeter. Both survive a reload.
+
+Click "Settings" to expand or collapse a panel of picker options; the expanded/collapsed state is
+remembered. It holds:
+
+- **Path mode** — "File tree" shows the path from the project root; "From root component" shows the
+  component chain instead (e.g. `App > Counter`).
+- **Show element screenshot** — on by default; turning it off skips capture entirely. When on, the
+  padding around the element (default 30px) is configurable.
+
+The "Click an element" hint above the page can be right-click-dragged horizontally; its position is
+remembered and clamped to stay inside the viewport.
 
 ## Works with
 

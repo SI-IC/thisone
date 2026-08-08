@@ -88,9 +88,6 @@ const STYLE = `
 .settings-body {
   padding: 0 10px 8px;
 }
-.settings-body.hidden {
-  display: none !important;
-}
 .hint { color: #a6adc8; }
 .path-row { display: flex; align-items: center; gap: 6px; }
 .path {
@@ -104,12 +101,7 @@ const STYLE = `
 .setting-group:first-child {
   margin-top: 0;
 }
-.setting-title {
-  color: #cdd6f4;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-.section-title {
+.setting-title, .section-title {
   color: #cdd6f4;
   font-weight: 600;
   margin-bottom: 4px;
@@ -122,9 +114,6 @@ const STYLE = `
   align-items: center;
   gap: 6px;
   padding: 4px 0 2px 18px;
-}
-.padding-row.hidden {
-  display: none !important;
 }
 .padding-row input {
   width: 60px;
@@ -310,6 +299,8 @@ export function createOverlay(): Overlay {
 
     const settings = el("div", "settings");
     const settingsHeader = el("div", "settings-header");
+    settingsHeader.tabIndex = 0;
+    settingsHeader.setAttribute("role", "button");
     const settingsArrow = el("span", "settings-arrow");
     settingsArrow.textContent = "▸";
     const settingsLabel = el("span");
@@ -321,11 +312,20 @@ export function createOverlay(): Overlay {
     const settingsExpanded = loadSettingsExpanded();
     settingsBody.classList.toggle("hidden", !settingsExpanded);
     settingsArrow.classList.toggle("expanded", settingsExpanded);
-    settingsHeader.addEventListener("click", () => {
+    settingsHeader.setAttribute("aria-expanded", String(settingsExpanded));
+    function toggleSettings(): void {
       const expanded = settingsBody.classList.contains("hidden");
       settingsBody.classList.toggle("hidden", !expanded);
       settingsArrow.classList.toggle("expanded", expanded);
+      settingsHeader.setAttribute("aria-expanded", String(expanded));
       saveSettingsExpanded(expanded);
+    }
+    settingsHeader.addEventListener("click", toggleSettings);
+    settingsHeader.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") {
+        if (ev.key === " ") ev.preventDefault();
+        toggleSettings();
+      }
     });
 
     const PATH_MODE_HELP: Record<PathMode, string> = {
@@ -351,6 +351,7 @@ export function createOverlay(): Overlay {
       const qmark = el("span", "qmark");
       qmark.textContent = "?";
       qmark.title = PATH_MODE_HELP[mode];
+      qmark.setAttribute("aria-label", PATH_MODE_HELP[mode]);
       input.addEventListener("change", () => {
         pathMode = mode;
         savePathMode(pathMode);
@@ -393,10 +394,11 @@ export function createOverlay(): Overlay {
     const paddingLabel = el("label");
     paddingLabel.htmlFor = "thisone-padding";
     paddingLabel.textContent = "Padding, px";
+    const initialScreenshotPadding = loadScreenshotPadding();
     paddingInput.type = "number";
     paddingInput.id = "thisone-padding";
     paddingInput.min = "0";
-    paddingInput.value = String(loadScreenshotPadding());
+    paddingInput.value = String(initialScreenshotPadding);
     paddingInput.addEventListener("change", () => {
       const parsed = Number(paddingInput.value);
       screenshotPadding =
@@ -410,7 +412,7 @@ export function createOverlay(): Overlay {
     settingsBody.appendChild(screenshotGroup);
 
     screenshotEnabled = loadScreenshotEnabled();
-    screenshotPadding = loadScreenshotPadding();
+    screenshotPadding = initialScreenshotPadding;
     screenshotRadios[screenshotEnabled ? "yes" : "no"].checked = true;
     paddingRow.classList.toggle("hidden", !screenshotEnabled);
 
@@ -452,6 +454,7 @@ export function createOverlay(): Overlay {
   }
 
   function renderEmpty(): void {
+    currentTarget = null;
     body.innerHTML = "";
     const hint = el("div", "hint");
     hint.textContent = "Select an element";
@@ -585,6 +588,7 @@ export function createOverlay(): Overlay {
 
   function startPick(): void {
     pickHint.classList.remove("hidden");
+    applyPickHintPosition();
     doc.addEventListener("mousemove", onMove, true);
     doc.addEventListener("click", onClick, true);
     doc.addEventListener("keydown", onKey, true);
