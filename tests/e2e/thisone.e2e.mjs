@@ -100,7 +100,9 @@ try {
           spacer.style.backgroundColor = "rgb(0, 0, 220)";
           document.body.insertBefore(spacer, document.body.firstChild);
 
-          const btn = document.querySelector("button");
+          const btn = [...document.querySelectorAll("button")].find((b) =>
+            b.textContent.includes("count is"),
+          );
           const wrap = document.createElement("div");
           wrap.style.display = "inline-block";
           wrap.style.padding = "100px";
@@ -186,7 +188,7 @@ try {
       const text = await pathEl.textContent();
       assert.doesNotMatch(text ?? "", /button/);
       assert.match(text ?? "", /<h1>/);
-      assert.match(text ?? "", /App\.vue:9:/);
+      assert.match(text ?? "", /App\.vue:10:/);
     },
   );
 

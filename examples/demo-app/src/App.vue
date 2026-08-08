@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import Counter from "./components/Counter.vue";
 import DemoHeader from "./components/DemoHeader.vue";
+import QuickActions from "./widgets/QuickActions.vue";
 </script>
 
 <template>
   <DemoHeader active="vue" />
   <main>
     <h1>thisone demo</h1>
-    <Counter />
+    <div class="actions-row">
+      <QuickActions side="left" />
+      <Counter />
+      <QuickActions side="right" />
+    </div>
   </main>
 </template>
 
@@ -44,5 +49,11 @@ h1 {
   font-size: 34px;
   font-weight: 650;
   letter-spacing: -0.02em;
+}
+
+.actions-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
 }
 </style>

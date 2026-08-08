@@ -108,7 +108,12 @@ async function scenePickAndScreenshot(ctx) {
   await page.evaluate((id) => window.__demoCursorReparent(id), OVERLAY_HOST_ID);
   await page.waitForTimeout(500);
 
-  await clickAt(page.locator("button").first(), "demo button", 750, 700);
+  await clickAt(
+    page.locator('button:has-text("count is")'),
+    "demo button",
+    750,
+    700,
+  );
 
   await page.locator("#__thisone_root >> css=img.shot").waitFor();
   await page.waitForTimeout(700);
