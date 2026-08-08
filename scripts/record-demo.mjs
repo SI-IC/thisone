@@ -30,12 +30,7 @@ function installCursor(hostId) {
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `
     <style>
-      .arrow, .pulse { position: fixed; left: 0; top: 0; pointer-events: none; }
-      .arrow { width: 22px; height: 32px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
-      .pulse {
-        width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%;
-        border: 2px solid #89b4fa; background: rgba(137, 180, 250, .3);
-      }
+      .arrow { position: fixed; left: 0; top: 0; pointer-events: none; width: 22px; height: 32px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
     </style>
     <svg class="arrow" viewBox="0 0 22 32" xmlns="http://www.w3.org/2000/svg">
       <path d="M1 1 L1 23.5 L6.8 18.2 L10.6 26.8 L14.4 25.1 L10.6 16.8 L18.5 16.3 Z"
@@ -56,25 +51,6 @@ function installCursor(hostId) {
   addEventListener(
     "mousemove",
     (event) => place(event.clientX, event.clientY),
-    true,
-  );
-  addEventListener(
-    "mousedown",
-    (event) => {
-      const pulse = document.createElement("div");
-      pulse.className = "pulse";
-      pulse.style.transform = `translate(${event.clientX}px, ${event.clientY}px)`;
-      shadow.appendChild(pulse);
-      pulse.animate(
-        [
-          { opacity: 0.9, scale: 0.3 },
-          { opacity: 0, scale: 1.5 },
-        ],
-        { duration: 450, easing: "ease-out", fill: "forwards" },
-      );
-      // Не менять, потому что под нагрузкой частых page.screenshot() rAF-тики "finish" могут не успеть — pulse завис бы видимым на весь остаток записи
-      setTimeout(() => pulse.remove(), 450);
-    },
     true,
   );
 

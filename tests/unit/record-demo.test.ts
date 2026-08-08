@@ -141,10 +141,9 @@ describe("synthetic cursor", () => {
     );
   });
 
-  it("external-failure: removes the click pulse via a timer, not just the animation's finish event, so a delayed rAF under screenshot load can't strand it on screen", () => {
-    expect(SOURCE).toMatch(
-      /setTimeout\(\s*\(\)\s*=>\s*pulse\.remove\(\),\s*450\s*\)/,
-    );
+  it("draws no click-pulse effect, only the arrow — a synthetic circle at the click point read as a stray artifact on the recording", () => {
+    expect(SOURCE).not.toMatch(/\.pulse\b/);
+    expect(SOURCE).not.toContain("mousedown");
   });
 });
 
