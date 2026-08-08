@@ -4,6 +4,7 @@ import {
   paddedCropRect,
   cropCanvas,
   PADDING_PX,
+  MAX_CAPTURE_SCALE,
   captureElementScreenshot,
 } from "../../src/client/screenshot";
 import * as modernScreenshot from "modern-screenshot";
@@ -143,5 +144,55 @@ describe("captureElementScreenshot padding parameter", () => {
       50,
     );
     vi.restoreAllMocks();
+  });
+});
+
+describe("captureElementScreenshot render scale (boundary)", () => {
+  it("caps a high devicePixelRatio at MAX_CAPTURE_SCALE and scales the crop rect", async () => {
+    vi.stubGlobal("devicePixelRatio", 3);
+    const canvas = document.createElement("canvas");
+    canvas.width = 3000;
+    canvas.height = 3000;
+    const domToCanvas = vi
+      .spyOn(modernScreenshot, "domToCanvas")
+      .mockResolvedValue(canvas);
+    const drawImage = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage,
+    } as any);
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(
+      function (this: HTMLCanvasElement, cb: BlobCallback) {
+        cb(new Blob(["x"], { type: "image/png" }));
+      },
+    );
+    const el = document.createElement("div");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue({
+      left: 100,
+      top: 100,
+      right: 150,
+      bottom: 150,
+      width: 50,
+      height: 50,
+    } as DOMRect);
+
+    await captureElementScreenshot(el, null, 0);
+
+    expect(domToCanvas).toHaveBeenCalledWith(
+      document.documentElement,
+      expect.objectContaining({ scale: MAX_CAPTURE_SCALE }),
+    );
+    expect(drawImage).toHaveBeenCalledWith(
+      canvas,
+      100 * MAX_CAPTURE_SCALE,
+      100 * MAX_CAPTURE_SCALE,
+      50 * MAX_CAPTURE_SCALE,
+      50 * MAX_CAPTURE_SCALE,
+      0,
+      0,
+      50 * MAX_CAPTURE_SCALE,
+      50 * MAX_CAPTURE_SCALE,
+    );
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 });

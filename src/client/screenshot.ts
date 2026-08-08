@@ -3,6 +3,7 @@
 import { domToCanvas } from "modern-screenshot";
 
 export const PADDING_PX = 30;
+export const MAX_CAPTURE_SCALE = 2;
 
 export interface CropRect {
   x: number;
@@ -63,14 +64,23 @@ export async function captureElementScreenshot(
   excludeRoot?: Node | null,
   padding: number = PADDING_PX,
 ): Promise<Blob> {
+  const scale = Math.min(window.devicePixelRatio || 1, MAX_CAPTURE_SCALE);
   const full = await domToCanvas(document.documentElement, {
     width: window.innerWidth,
     height: window.innerHeight,
+    scale,
     // Do not change, because restoreScrollPosition:false desyncs the canvas from getBoundingClientRect() on scroll
     features: { restoreScrollPosition: true },
     filter: excludeRoot ? (node) => node !== excludeRoot : undefined,
   });
-  const rect = paddedCropRect(el.getBoundingClientRect(), padding, {
+  const cssRect = el.getBoundingClientRect();
+  const scaledRect = new DOMRect(
+    cssRect.left * scale,
+    cssRect.top * scale,
+    cssRect.width * scale,
+    cssRect.height * scale,
+  );
+  const rect = paddedCropRect(scaledRect, padding * scale, {
     width: full.width,
     height: full.height,
   });

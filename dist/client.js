@@ -1711,6 +1711,7 @@
 
   // src/client/screenshot.ts
   var PADDING_PX = 30;
+  var MAX_CAPTURE_SCALE = 2;
   function paddedCropRect(rect, padding, bounds) {
     const x = Math.max(0, rect.left - padding);
     const y = Math.max(0, rect.top - padding);
@@ -1742,14 +1743,23 @@
     return out;
   }
   async function captureElementScreenshot(el, excludeRoot, padding = PADDING_PX) {
+    const scale = Math.min(window.devicePixelRatio || 1, MAX_CAPTURE_SCALE);
     const full = await domToCanvas(document.documentElement, {
       width: window.innerWidth,
       height: window.innerHeight,
+      scale,
       // Do not change, because restoreScrollPosition:false desyncs the canvas from getBoundingClientRect() on scroll
       features: { restoreScrollPosition: true },
       filter: excludeRoot ? (node) => node !== excludeRoot : void 0
     });
-    const rect = paddedCropRect(el.getBoundingClientRect(), padding, {
+    const cssRect = el.getBoundingClientRect();
+    const scaledRect = new DOMRect(
+      cssRect.left * scale,
+      cssRect.top * scale,
+      cssRect.width * scale,
+      cssRect.height * scale
+    );
+    const rect = paddedCropRect(scaledRect, padding * scale, {
       width: full.width,
       height: full.height
     });
