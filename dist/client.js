@@ -1915,6 +1915,25 @@
     }
   }
 
+  // src/client/pickhint-store.ts
+  var KEY3 = "thisone:pickhint-x";
+  function loadPickHintOffsetX() {
+    try {
+      const raw = localStorage.getItem(KEY3);
+      if (raw === null) return null;
+      const parsed = JSON.parse(raw);
+      return typeof parsed === "number" && Number.isFinite(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  function savePickHintOffsetX(x) {
+    try {
+      localStorage.setItem(KEY3, JSON.stringify(x));
+    } catch {
+    }
+  }
+
   // src/client/overlay.ts
   var HOST_ID = "__thisone_root";
   var STYLE = `
@@ -2106,6 +2125,8 @@ img.shot:hover { border-color: #89b4fa; }
     let pathMode = "tree";
     let targetPosition = DEFAULT_TARGET_POSITION;
     let targetDragging = false;
+    let pickHintOffsetX = null;
+    let pickHintDragging = false;
     let pickId = 0;
     let currentTarget = null;
     let screenshotEnabled = true;
@@ -2277,6 +2298,7 @@ img.shot:hover { border-color: #89b4fa; }
       root.appendChild(panel);
       pickHint = el("div", "pickhint hidden");
       pickHint.textContent = "Click an element \xB7 Esc to close";
+      pickHint.title = "Right-click drag to move horizontally";
       box = el("div", "box hidden");
       tip = el("div", "tip hidden");
       targetBtn = el("button", "target-btn hidden");
@@ -2296,6 +2318,10 @@ img.shot:hover { border-color: #89b4fa; }
       });
       targetBtn.addEventListener("mousedown", onTargetDragStart);
       win.addEventListener("resize", applyTargetButtonPosition);
+      pickHintOffsetX = loadPickHintOffsetX();
+      applyPickHintPosition();
+      pickHint.addEventListener("mousedown", onPickHintDragStart);
+      win.addEventListener("resize", applyPickHintPosition);
       header.addEventListener("mousedown", onDragStart);
       win.addEventListener("beforeunload", cancelPick);
     }
@@ -2525,6 +2551,41 @@ img.shot:hover { border-color: #89b4fa; }
         win.removeEventListener("contextmenu", suppressContextMenu, true);
       }, 0);
     }
+    function clampPickHintX(x) {
+      const width = pickHint.offsetWidth;
+      return Math.min(Math.max(0, x), Math.max(0, win.innerWidth - width));
+    }
+    function applyPickHintPosition() {
+      if (pickHintOffsetX === null) {
+        pickHint.style.left = "";
+        return;
+      }
+      pickHintOffsetX = clampPickHintX(pickHintOffsetX);
+      pickHint.style.left = pickHintOffsetX + "px";
+    }
+    function onPickHintDragStart(ev) {
+      if (ev.button !== 2) return;
+      ev.preventDefault();
+      pickHintDragging = true;
+      win.addEventListener("mousemove", onPickHintDragMove);
+      win.addEventListener("mouseup", onPickHintDragEnd);
+      win.addEventListener("contextmenu", suppressContextMenu, true);
+    }
+    function onPickHintDragMove(ev) {
+      if (!pickHintDragging) return;
+      pickHintOffsetX = clampPickHintX(ev.clientX - pickHint.offsetWidth / 2);
+      pickHint.style.left = pickHintOffsetX + "px";
+    }
+    function onPickHintDragEnd() {
+      if (!pickHintDragging) return;
+      pickHintDragging = false;
+      win.removeEventListener("mousemove", onPickHintDragMove);
+      win.removeEventListener("mouseup", onPickHintDragEnd);
+      if (pickHintOffsetX !== null) savePickHintOffsetX(pickHintOffsetX);
+      setTimeout(() => {
+        win.removeEventListener("contextmenu", suppressContextMenu, true);
+      }, 0);
+    }
     function openModal() {
       ensureMounted();
       if (open) return;
@@ -2556,8 +2617,12 @@ img.shot:hover { border-color: #89b4fa; }
         win.removeEventListener("mouseup", onTargetDragEnd);
         win.removeEventListener("contextmenu", suppressContextMenu, true);
         win.removeEventListener("resize", applyTargetButtonPosition);
+        win.removeEventListener("mousemove", onPickHintDragMove);
+        win.removeEventListener("mouseup", onPickHintDragEnd);
+        win.removeEventListener("resize", applyPickHintPosition);
         dragOffset = null;
         targetDragging = false;
+        pickHintDragging = false;
         if (host && host.parentNode) host.parentNode.removeChild(host);
         host = null;
         open = false;

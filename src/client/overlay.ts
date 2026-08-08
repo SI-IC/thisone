@@ -22,6 +22,7 @@ import {
   loadScreenshotPadding,
   saveScreenshotPadding,
 } from "./screenshot-store";
+import { loadPickHintOffsetX, savePickHintOffsetX } from "./pickhint-store";
 
 export const HOST_ID = "__thisone_root";
 
@@ -227,6 +228,8 @@ export function createOverlay(): Overlay {
   let pathMode: PathMode = "tree";
   let targetPosition: TargetPosition = DEFAULT_TARGET_POSITION;
   let targetDragging = false;
+  let pickHintOffsetX: number | null = null;
+  let pickHintDragging = false;
   let pickId = 0;
   let currentTarget: Element | null = null;
   let screenshotEnabled = true;
@@ -416,6 +419,7 @@ export function createOverlay(): Overlay {
 
     pickHint = el("div", "pickhint hidden");
     pickHint.textContent = "Click an element · Esc to close";
+    pickHint.title = "Right-click drag to move horizontally";
     box = el("div", "box hidden");
     tip = el("div", "tip hidden");
     targetBtn = el("button", "target-btn hidden");
@@ -437,6 +441,11 @@ export function createOverlay(): Overlay {
     });
     targetBtn.addEventListener("mousedown", onTargetDragStart);
     win.addEventListener("resize", applyTargetButtonPosition);
+
+    pickHintOffsetX = loadPickHintOffsetX();
+    applyPickHintPosition();
+    pickHint.addEventListener("mousedown", onPickHintDragStart);
+    win.addEventListener("resize", applyPickHintPosition);
 
     header.addEventListener("mousedown", onDragStart);
     win.addEventListener("beforeunload", cancelPick);
@@ -703,6 +712,46 @@ export function createOverlay(): Overlay {
     }, 0);
   }
 
+  function clampPickHintX(x: number): number {
+    const width = pickHint.offsetWidth;
+    return Math.min(Math.max(0, x), Math.max(0, win.innerWidth - width));
+  }
+
+  function applyPickHintPosition(): void {
+    if (pickHintOffsetX === null) {
+      pickHint.style.left = "";
+      return;
+    }
+    pickHintOffsetX = clampPickHintX(pickHintOffsetX);
+    pickHint.style.left = pickHintOffsetX + "px";
+  }
+
+  function onPickHintDragStart(ev: MouseEvent): void {
+    if (ev.button !== 2) return;
+    ev.preventDefault();
+    pickHintDragging = true;
+    win.addEventListener("mousemove", onPickHintDragMove);
+    win.addEventListener("mouseup", onPickHintDragEnd);
+    win.addEventListener("contextmenu", suppressContextMenu, true);
+  }
+
+  function onPickHintDragMove(ev: MouseEvent): void {
+    if (!pickHintDragging) return;
+    pickHintOffsetX = clampPickHintX(ev.clientX - pickHint.offsetWidth / 2);
+    pickHint.style.left = pickHintOffsetX + "px";
+  }
+
+  function onPickHintDragEnd(): void {
+    if (!pickHintDragging) return;
+    pickHintDragging = false;
+    win.removeEventListener("mousemove", onPickHintDragMove);
+    win.removeEventListener("mouseup", onPickHintDragEnd);
+    if (pickHintOffsetX !== null) savePickHintOffsetX(pickHintOffsetX);
+    setTimeout(() => {
+      win.removeEventListener("contextmenu", suppressContextMenu, true);
+    }, 0);
+  }
+
   function openModal(): void {
     ensureMounted();
     if (open) return;
@@ -736,8 +785,12 @@ export function createOverlay(): Overlay {
       win.removeEventListener("mouseup", onTargetDragEnd);
       win.removeEventListener("contextmenu", suppressContextMenu, true);
       win.removeEventListener("resize", applyTargetButtonPosition);
+      win.removeEventListener("mousemove", onPickHintDragMove);
+      win.removeEventListener("mouseup", onPickHintDragEnd);
+      win.removeEventListener("resize", applyPickHintPosition);
       dragOffset = null;
       targetDragging = false;
+      pickHintDragging = false;
       if (host && host.parentNode) host.parentNode.removeChild(host);
       host = null;
       open = false;

@@ -27,6 +27,9 @@ function settingsHeader() {
 function settingsBody() {
   return shadow().querySelector(".settings-body") as HTMLElement;
 }
+function pickHint() {
+  return shadow().querySelector(".pickhint") as HTMLElement;
+}
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
@@ -694,6 +697,88 @@ describe("overlay", () => {
       expect.anything(),
       60,
     );
+    o.destroy();
+  });
+
+  it("pickHint has a tooltip explaining the right-click drag", () => {
+    const o = createOverlay();
+    o.open();
+    expect(pickHint().title.length).toBeGreaterThan(0);
+    o.destroy();
+  });
+
+  it("right-click-dragging the pick hint moves it horizontally within the viewport and persists (edge:browser/UX)", () => {
+    const o = createOverlay();
+    o.open();
+    const hint = pickHint();
+    hint.dispatchEvent(
+      new MouseEvent("mousedown", {
+        bubbles: true,
+        button: 2,
+        clientX: 400,
+        clientY: 12,
+      }),
+    );
+    window.dispatchEvent(
+      new MouseEvent("mousemove", { clientX: 700, clientY: 12 }),
+    );
+    window.dispatchEvent(new MouseEvent("mouseup", { button: 2 }));
+
+    expect(hint.style.top).toBe("");
+    const left = parseFloat(hint.style.left);
+    expect(left).toBeGreaterThan(0);
+    const stored = JSON.parse(localStorage.getItem("thisone:pickhint-x")!);
+    expect(stored).toBe(left);
+    o.destroy();
+  });
+
+  it("edge:boundary — dragging the pick hint past the right edge clamps it inside the viewport", () => {
+    const o = createOverlay();
+    o.open();
+    const hint = pickHint();
+    hint.dispatchEvent(
+      new MouseEvent("mousedown", {
+        bubbles: true,
+        button: 2,
+        clientX: 400,
+        clientY: 12,
+      }),
+    );
+    window.dispatchEvent(
+      new MouseEvent("mousemove", { clientX: 100000, clientY: 12 }),
+    );
+    window.dispatchEvent(new MouseEvent("mouseup", { button: 2 }));
+
+    const left = parseFloat(hint.style.left);
+    expect(left + hint.offsetWidth).toBeLessThanOrEqual(window.innerWidth);
+    o.destroy();
+  });
+
+  it("a left-click mousedown on the pick hint does not start a drag (malformed-input guard)", () => {
+    const o = createOverlay();
+    o.open();
+    const hint = pickHint();
+    hint.dispatchEvent(
+      new MouseEvent("mousedown", {
+        bubbles: true,
+        button: 0,
+        clientX: 400,
+        clientY: 12,
+      }),
+    );
+    window.dispatchEvent(
+      new MouseEvent("mousemove", { clientX: 700, clientY: 12 }),
+    );
+    window.dispatchEvent(new MouseEvent("mouseup"));
+    expect(localStorage.getItem("thisone:pickhint-x")).toBeNull();
+    o.destroy();
+  });
+
+  it("restores a persisted pick-hint offset on open", () => {
+    localStorage.setItem("thisone:pickhint-x", JSON.stringify(77));
+    const o = createOverlay();
+    o.open();
+    expect(pickHint().style.left).toBe("77px");
     o.destroy();
   });
 });
