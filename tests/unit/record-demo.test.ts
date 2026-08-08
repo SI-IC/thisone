@@ -147,6 +147,45 @@ describe("synthetic cursor", () => {
   });
 });
 
+describe("synthetic terminal", () => {
+  it("draws a Claude Code-branded terminal, because the outro scene needs a plausible chat surface", () => {
+    expect(SOURCE).toContain(
+      "addInitScript(installTerminal, TERMINAL_HOST_ID)",
+    );
+    expect(SOURCE).toContain("✳ Claude Code");
+  });
+
+  it("uses a host id distinct from the cursor's and the overlay's, so attachShadow cannot collide", () => {
+    expect(SOURCE).toContain('TERMINAL_HOST_ID = "__thisone_demo_terminal"');
+    expect(SOURCE).not.toMatch(/TERMINAL_HOST_ID = "__thisone_demo_cursor"/);
+    expect(SOURCE).not.toMatch(/TERMINAL_HOST_ID = "__thisone_root"/);
+  });
+
+  it("exposes slideUp/typeText/appendPath/setStatus on window.__demoTerminal for the scene to drive", () => {
+    expect(SOURCE).toContain("window.__demoTerminal");
+    expect(SOURCE).toMatch(/slideUp\s*\(\s*\)/);
+    expect(SOURCE).toMatch(/typeText\s*\(\s*str\s*\)/);
+    expect(SOURCE).toMatch(/appendPath\s*\(\s*str\s*\)/);
+    expect(SOURCE).toMatch(/setStatus\s*\(\s*state\s*\)/);
+  });
+
+  it("keeps the prompt and the pasted path inside one input block, not a separately labeled section", () => {
+    expect(SOURCE).toMatch(
+      /class="input">[\s\S]*prompt[\s\S]*path[\s\S]*<\/div>/,
+    );
+  });
+
+  it("registers the outro scene last, after pick-and-screenshot and copy-path", () => {
+    expect(SOURCE).toMatch(
+      /const SCENES = \[\s*scenePickAndScreenshot,\s*sceneCopyPath,\s*sceneClaudeCodeChat,?\s*\];/,
+    );
+  });
+
+  it("reads the already-copied path from the panel instead of hardcoding it, so it can't drift from what sceneCopyPath showed", () => {
+    expect(SOURCE).toMatch(/css=\.path"\)\s*\.innerText\(\)/);
+  });
+});
+
 describe("record-demo browser lifecycle", () => {
   it("concurrency: closes the browser from a finally block on every path", () => {
     expect(SOURCE).toMatch(/} finally \{\s*await browser\.close\(\);/);

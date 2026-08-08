@@ -13,6 +13,7 @@ const FRAME_MS = 90;
 const PANEL_POS = { x: 500, y: 96 };
 const CURSOR_HOST_ID = "__thisone_demo_cursor";
 const OVERLAY_HOST_ID = "__thisone_root";
+const TERMINAL_HOST_ID = "__thisone_demo_terminal";
 const START_POINT = { x: 70, y: 620 };
 const GLIDE_STEP_MS = 25;
 const MAX_GLIDE_STEPS = 400;
@@ -60,6 +61,77 @@ function installCursor(hostId) {
     if (!overlay?.shadowRoot)
       throw new Error("cursor: overlay host has no shadow root");
     overlay.shadowRoot.appendChild(host);
+  };
+}
+
+/**
+ * Runs in the page: draws a hidden, bottom-anchored synthetic Claude Code
+ * terminal that the outro scene slides into view and drives.
+ * @param hostId - id for the terminal's own shadow host
+ */
+function installTerminal(hostId) {
+  const host = document.createElement("div");
+  host.id = hostId;
+  host.style.cssText =
+    "position:fixed;left:0;bottom:0;width:900px;pointer-events:none;" +
+    "z-index:2147483646;transform:translateY(100%);" +
+    "transition:transform 400ms ease-out";
+  const shadow = host.attachShadow({ mode: "open" });
+  shadow.innerHTML = `
+    <style>
+      .panel { font-family: ui-monospace, Menlo, monospace; background: #141413; }
+      .header { padding: 14px 18px 8px; color: #c2c0b6; font-size: 13px; }
+      .input {
+        margin: 0 18px 16px; border: 1px solid #3a3934; border-radius: 6px;
+        padding: 12px 14px; font-size: 14px; line-height: 1.6;
+      }
+      .prompt { color: #e8e6dc; }
+      .path { color: #8a887e; }
+      .status { padding: 0 18px 16px; font-size: 14px; line-height: 1.6; }
+      .status.thinking { color: #d97757; }
+      .status.ok { color: #e8e6dc; }
+    </style>
+    <div class="panel">
+      <div class="header">✳ Claude Code</div>
+      <div class="input"><span class="prompt">&gt; <span class="typed"></span></span><span class="path"></span></div>
+      <div class="status"></div>
+    </div>`;
+  const typed = shadow.querySelector(".typed");
+  const pathEl = shadow.querySelector(".path");
+  const status = shadow.querySelector(".status");
+
+  // Не менять, потому что addInitScript выполняется на document_start, когда document.body ещё null
+  if (document.body) document.body.appendChild(host);
+  else
+    addEventListener("DOMContentLoaded", () => document.body.appendChild(host));
+
+  window.__demoTerminal = {
+    slideUp() {
+      host.style.transform = "translateY(0)";
+    },
+    typeText(str) {
+      return new Promise((resolve) => {
+        if (str.length === 0) {
+          resolve();
+          return;
+        }
+        let i = 0;
+        const step = () => {
+          typed.textContent += str[i];
+          i += 1;
+          if (i < str.length) setTimeout(step, 45);
+          else resolve();
+        };
+        step();
+      });
+    },
+    appendPath(str) {
+      pathEl.textContent = ` · ${str}`;
+    },
+    setStatus(state) {
+      status.className = `status ${state}`;
+      status.textContent = state === "thinking" ? "● Thinking…" : "ok";
+    },
   };
 }
 
@@ -173,6 +245,7 @@ export async function recordDemo(rawPort) {
       localStorage.setItem("thisone:pos", JSON.stringify(pos));
     }, PANEL_POS);
     await page.addInitScript(installCursor, CURSOR_HOST_ID);
+    await page.addInitScript(installTerminal, TERMINAL_HOST_ID);
     // Не менять, потому что addStyleTag не переживает vite's HMR full-reload, addInitScript переживает
     await page.addInitScript(() => {
       const style = document.createElement("style");
