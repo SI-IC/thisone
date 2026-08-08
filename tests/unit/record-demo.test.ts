@@ -155,6 +155,11 @@ describe("record-demo browser lifecycle", () => {
   it("hides the examples demo-hub nav before capturing, so it never leaks into the gif", () => {
     expect(SOURCE).toContain(".demo-header { display: none !important; }");
   });
+
+  it("dumps sampled frames to /tmp only behind THISONE_DEMO_DEBUG_FRAMES", () => {
+    expect(SOURCE).toContain("process.env.THISONE_DEMO_DEBUG_FRAMES");
+    expect(SOURCE).toContain("/tmp/demo-frame-");
+  });
 });
 
 describe("record-demo scenes", () => {
@@ -162,6 +167,10 @@ describe("record-demo scenes", () => {
     expect(SOURCE).toMatch(
       /const SCENES = \[scenePickAndScreenshot, sceneCopyPath\];/,
     );
-    expect(SOURCE).toMatch(/for \(const scene of SCENES\) await scene\(ctx\);/);
+    expect(SOURCE).toMatch(/for \(const scene of SCENES\) \{/);
+  });
+
+  it("names the failing scene when one throws, so a future scene's bug isn't a mystery stack trace", () => {
+    expect(SOURCE).toContain('scene "${scene.name}" failed');
   });
 });

@@ -385,6 +385,9 @@ describe("overlay", () => {
 
     expect(panel().style.top).toBe(topBeforeDrag);
     window.dispatchEvent(new MouseEvent("mouseup"));
+
+    const topAfterDrag = parseFloat(panel().style.top);
+    expect(topAfterDrag + 600).toBeLessThanOrEqual(window.innerHeight);
     o.destroy();
   });
 

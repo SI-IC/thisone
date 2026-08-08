@@ -288,10 +288,12 @@ export function createOverlay(): Overlay {
 
   function reclampPosition(): void {
     if (dragOffset) return;
-    const rect = panel.getBoundingClientRect();
-    const clamped = clampPanelPosition(rect.left, rect.top);
+    const left = parseFloat(panel.style.left) || 0;
+    const top = parseFloat(panel.style.top) || 0;
+    const clamped = clampPanelPosition(left, top);
     panel.style.left = clamped.x + "px";
     panel.style.top = clamped.y + "px";
+    if (clamped.x === left && clamped.y === top) return;
     savePosition(clamped);
   }
 
@@ -672,10 +674,7 @@ export function createOverlay(): Overlay {
     dragOffset = null;
     win.removeEventListener("mousemove", onDragMove);
     win.removeEventListener("mouseup", onDragEnd);
-    savePosition({
-      x: parseFloat(panel.style.left) || 0,
-      y: parseFloat(panel.style.top) || 0,
-    });
+    reclampPosition();
   }
 
   function setTargetEnabled(enabled: boolean): void {

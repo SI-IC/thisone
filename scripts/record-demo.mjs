@@ -192,11 +192,15 @@ export async function recordDemo(rawPort) {
       localStorage.setItem("thisone:pos", JSON.stringify(pos));
     }, PANEL_POS);
     await page.addInitScript(installCursor, CURSOR_HOST_ID);
-    await page.goto(`http://localhost:${port}/`, { waitUntil: "networkidle" });
-    // Не менять, потому что .demo-header — это навигация между examples/demo-app-*, а не часть демонстрируемого продукта
-    await page.addStyleTag({
-      content: ".demo-header { display: none !important; }",
+    // Не менять, потому что addStyleTag не переживает vite's HMR full-reload, addInitScript переживает
+    await page.addInitScript(() => {
+      const style = document.createElement("style");
+      style.textContent = ".demo-header { display: none !important; }";
+      const append = () => document.head.appendChild(style);
+      if (document.head) append();
+      else addEventListener("DOMContentLoaded", append);
     });
+    await page.goto(`http://localhost:${port}/`, { waitUntil: "networkidle" });
     await page.waitForTimeout(500);
 
     let cursor = START_POINT;
@@ -227,7 +231,15 @@ export async function recordDemo(rawPort) {
 
     const ctx = { page, glideTo, clickAt };
     try {
-      for (const scene of SCENES) await scene(ctx);
+      for (const scene of SCENES) {
+        try {
+          await scene(ctx);
+        } catch (error) {
+          throw new Error(`record-demo: scene "${scene.name}" failed`, {
+            cause: error,
+          });
+        }
+      }
     } finally {
       capturing = false;
       await loop;
@@ -241,13 +253,14 @@ export async function recordDemo(rawPort) {
 
   if (process.env.THISONE_DEMO_DEBUG_FRAMES) {
     const n = frames.length;
-    for (const i of [
+    const indices = new Set([
       0,
       Math.floor(n / 4),
       Math.floor(n / 2),
       Math.floor((3 * n) / 4),
       n - 1,
-    ]) {
+    ]);
+    for (const i of indices) {
       writeFileSync(`/tmp/demo-frame-${i}.png`, frames[i]);
     }
   }
