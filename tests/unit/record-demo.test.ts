@@ -140,6 +140,12 @@ describe("synthetic cursor", () => {
       /await locator\.waitFor\(\);[\s\S]*const now = await centerOf\(locator, label\);[\s\S]*mouse\.down\(\)/,
     );
   });
+
+  it("external-failure: removes the click pulse via a timer, not just the animation's finish event, so a delayed rAF under screenshot load can't strand it on screen", () => {
+    expect(SOURCE).toMatch(
+      /setTimeout\(\s*\(\)\s*=>\s*pulse\.remove\(\),\s*450\s*\)/,
+    );
+  });
 });
 
 describe("record-demo browser lifecycle", () => {

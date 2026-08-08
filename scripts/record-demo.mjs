@@ -65,15 +65,15 @@ function installCursor(hostId) {
       pulse.className = "pulse";
       pulse.style.transform = `translate(${event.clientX}px, ${event.clientY}px)`;
       shadow.appendChild(pulse);
-      pulse
-        .animate(
-          [
-            { opacity: 0.9, scale: 0.3 },
-            { opacity: 0, scale: 1.5 },
-          ],
-          { duration: 450, easing: "ease-out" },
-        )
-        .addEventListener("finish", () => pulse.remove());
+      pulse.animate(
+        [
+          { opacity: 0.9, scale: 0.3 },
+          { opacity: 0, scale: 1.5 },
+        ],
+        { duration: 450, easing: "ease-out", fill: "forwards" },
+      );
+      // Не менять, потому что под нагрузкой частых page.screenshot() rAF-тики "finish" могут не успеть — pulse завис бы видимым на весь остаток записи
+      setTimeout(() => pulse.remove(), 450);
     },
     true,
   );
