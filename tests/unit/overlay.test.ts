@@ -727,6 +727,7 @@ describe("overlay", () => {
     expect(hint.style.top).toBe("");
     const left = parseFloat(hint.style.left);
     expect(left).toBeGreaterThan(0);
+    expect(hint.style.transform).toBe("none");
     const stored = JSON.parse(localStorage.getItem("thisone:pickhint-x")!);
     expect(stored).toBe(left);
     o.destroy();
@@ -779,6 +780,23 @@ describe("overlay", () => {
     const o = createOverlay();
     o.open();
     expect(pickHint().style.left).toBe("77px");
+    o.destroy();
+  });
+
+  it("leaves the CSS centering transform untouched when there is no persisted pick-hint offset", () => {
+    const o = createOverlay();
+    o.open();
+    expect(pickHint().style.left).toBe("");
+    expect(pickHint().style.transform).toBe("");
+    o.destroy();
+  });
+
+  it("clears the CSS centering transform when a persisted pick-hint offset is restored on open", () => {
+    localStorage.setItem("thisone:pickhint-x", JSON.stringify(77));
+    const o = createOverlay();
+    o.open();
+    expect(pickHint().style.left).toBe("77px");
+    expect(pickHint().style.transform).toBe("none");
     o.destroy();
   });
 });

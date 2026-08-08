@@ -720,10 +720,12 @@ export function createOverlay(): Overlay {
   function applyPickHintPosition(): void {
     if (pickHintOffsetX === null) {
       pickHint.style.left = "";
+      pickHint.style.transform = "";
       return;
     }
     pickHintOffsetX = clampPickHintX(pickHintOffsetX);
     pickHint.style.left = pickHintOffsetX + "px";
+    pickHint.style.transform = "none";
   }
 
   function onPickHintDragStart(ev: MouseEvent): void {
@@ -739,6 +741,7 @@ export function createOverlay(): Overlay {
     if (!pickHintDragging) return;
     pickHintOffsetX = clampPickHintX(ev.clientX - pickHint.offsetWidth / 2);
     pickHint.style.left = pickHintOffsetX + "px";
+    pickHint.style.transform = "none";
   }
 
   function onPickHintDragEnd(): void {

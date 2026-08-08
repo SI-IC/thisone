@@ -2558,10 +2558,12 @@ img.shot:hover { border-color: #89b4fa; }
     function applyPickHintPosition() {
       if (pickHintOffsetX === null) {
         pickHint.style.left = "";
+        pickHint.style.transform = "";
         return;
       }
       pickHintOffsetX = clampPickHintX(pickHintOffsetX);
       pickHint.style.left = pickHintOffsetX + "px";
+      pickHint.style.transform = "none";
     }
     function onPickHintDragStart(ev) {
       if (ev.button !== 2) return;
@@ -2575,6 +2577,7 @@ img.shot:hover { border-color: #89b4fa; }
       if (!pickHintDragging) return;
       pickHintOffsetX = clampPickHintX(ev.clientX - pickHint.offsetWidth / 2);
       pickHint.style.left = pickHintOffsetX + "px";
+      pickHint.style.transform = "none";
     }
     function onPickHintDragEnd() {
       if (!pickHintDragging) return;
