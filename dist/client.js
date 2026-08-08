@@ -1880,6 +1880,41 @@
     }
   }
 
+  // src/client/screenshot-store.ts
+  var ENABLED_KEY2 = "thisone:screenshot-enabled";
+  var PADDING_KEY = "thisone:screenshot-padding";
+  var DEFAULT_PADDING = 30;
+  function loadScreenshotEnabled() {
+    try {
+      const raw = localStorage.getItem(ENABLED_KEY2);
+      return raw === null ? true : raw === "1";
+    } catch {
+      return true;
+    }
+  }
+  function saveScreenshotEnabled(enabled) {
+    try {
+      localStorage.setItem(ENABLED_KEY2, enabled ? "1" : "0");
+    } catch {
+    }
+  }
+  function loadScreenshotPadding() {
+    try {
+      const raw = localStorage.getItem(PADDING_KEY);
+      if (raw === null) return DEFAULT_PADDING;
+      const parsed = JSON.parse(raw);
+      return typeof parsed === "number" && Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_PADDING;
+    } catch {
+      return DEFAULT_PADDING;
+    }
+  }
+  function saveScreenshotPadding(padding) {
+    try {
+      localStorage.setItem(PADDING_KEY, JSON.stringify(padding));
+    } catch {
+    }
+  }
+
   // src/client/overlay.ts
   var HOST_ID = "__thisone_root";
   var STYLE = `
@@ -1956,6 +1991,36 @@
   color: #cdd6f4;
   font-weight: 600;
   margin-bottom: 4px;
+}
+.section-title {
+  color: #cdd6f4;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.section-title:not(:first-child) {
+  margin-top: 10px;
+}
+.padding-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0 2px 18px;
+}
+.padding-row.hidden {
+  display: none !important;
+}
+.padding-row input {
+  width: 60px;
+  background: #11111b;
+  border: 1px solid #45475a;
+  color: #eee;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+}
+.shot-loading {
+  color: #a6adc8;
+  margin-top: 8px;
 }
 .radio-row {
   display: flex;
@@ -2043,6 +2108,8 @@ img.shot:hover { border-color: #89b4fa; }
     let targetDragging = false;
     let pickId = 0;
     let currentTarget = null;
+    let screenshotEnabled = true;
+    let screenshotPadding = 30;
     function replaceShotUrl(url) {
       if (currentShotUrl) URL.revokeObjectURL(currentShotUrl);
       currentShotUrl = url;
@@ -2157,6 +2224,55 @@ img.shot:hover { border-color: #89b4fa; }
         pathModeGroup.appendChild(row);
       });
       settingsBody.appendChild(pathModeGroup);
+      const screenshotGroup = el("div", "setting-group");
+      const screenshotTitle = el("div", "setting-title");
+      screenshotTitle.textContent = "Show element screenshot";
+      screenshotGroup.appendChild(screenshotTitle);
+      const screenshotRadios = {};
+      const paddingRow = el("div", "padding-row");
+      const paddingInput = el("input");
+      ["yes", "no"].forEach((value) => {
+        const row = el("div", "radio-row");
+        const input = el("input");
+        input.type = "radio";
+        input.name = "screenshot-enabled";
+        input.value = value;
+        const id = `thisone-screenshot-${value}`;
+        input.id = id;
+        const label = el("label");
+        label.htmlFor = id;
+        label.textContent = value === "yes" ? "Yes" : "No";
+        input.addEventListener("change", () => {
+          screenshotEnabled = value === "yes";
+          saveScreenshotEnabled(screenshotEnabled);
+          paddingRow.classList.toggle("hidden", !screenshotEnabled);
+          if (currentTarget) renderSelection(currentTarget);
+        });
+        screenshotRadios[value] = input;
+        row.append(input, label);
+        screenshotGroup.appendChild(row);
+      });
+      const paddingLabel = el("label");
+      paddingLabel.htmlFor = "thisone-padding";
+      paddingLabel.textContent = "Padding, px";
+      paddingInput.type = "number";
+      paddingInput.id = "thisone-padding";
+      paddingInput.min = "0";
+      paddingInput.value = String(loadScreenshotPadding());
+      paddingInput.addEventListener("change", () => {
+        const parsed = Number(paddingInput.value);
+        screenshotPadding = Number.isFinite(parsed) && parsed >= 0 ? parsed : screenshotPadding;
+        paddingInput.value = String(screenshotPadding);
+        saveScreenshotPadding(screenshotPadding);
+        if (currentTarget) renderSelection(currentTarget);
+      });
+      paddingRow.append(paddingLabel, paddingInput);
+      screenshotGroup.appendChild(paddingRow);
+      settingsBody.appendChild(screenshotGroup);
+      screenshotEnabled = loadScreenshotEnabled();
+      screenshotPadding = loadScreenshotPadding();
+      screenshotRadios[screenshotEnabled ? "yes" : "no"].checked = true;
+      paddingRow.classList.toggle("hidden", !screenshotEnabled);
       panel.append(header, settings, body);
       root.appendChild(panel);
       pickHint = el("div", "pickhint hidden");
@@ -2219,10 +2335,19 @@ img.shot:hover { border-color: #89b4fa; }
         );
       });
       pathRow.append(pathEl);
+      const pathTitle = el("div", "section-title");
+      pathTitle.textContent = "Path";
+      body.append(pathTitle, pathRow, pathStatus);
+      if (!screenshotEnabled) return;
+      const shotTitle = el("div", "section-title");
+      shotTitle.textContent = "Screenshot";
+      const loading = el("div", "shot-loading");
+      loading.textContent = "\u0414\u0435\u043B\u0430\u0435\u043C \u0441\u043A\u0440\u0438\u043D\u0448\u043E\u0442";
       const imgStatus = el("div", "status");
-      body.append(pathRow, pathStatus);
-      captureElementScreenshot(target, host).then((blob) => {
+      body.append(shotTitle, loading);
+      captureElementScreenshot(target, host, screenshotPadding).then((blob) => {
         if (myPickId !== pickId) return;
+        loading.remove();
         const img = el("img", "shot");
         img.alt = "screenshot";
         const url = URL.createObjectURL(blob);
@@ -2234,6 +2359,7 @@ img.shot:hover { border-color: #89b4fa; }
         body.append(img, imgStatus);
       }).catch(() => {
         if (myPickId !== pickId) return;
+        loading.remove();
         imgStatus.textContent = "Screenshot failed";
         imgStatus.classList.add("fail");
         body.append(imgStatus);

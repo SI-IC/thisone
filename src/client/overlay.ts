@@ -16,6 +16,12 @@ import {
 } from "./target-store";
 import { loadPathMode, savePathMode, type PathMode } from "./path-mode-store";
 import { loadSettingsExpanded, saveSettingsExpanded } from "./settings-store";
+import {
+  loadScreenshotEnabled,
+  saveScreenshotEnabled,
+  loadScreenshotPadding,
+  saveScreenshotPadding,
+} from "./screenshot-store";
 
 export const HOST_ID = "__thisone_root";
 
@@ -101,6 +107,36 @@ const STYLE = `
   color: #cdd6f4;
   font-weight: 600;
   margin-bottom: 4px;
+}
+.section-title {
+  color: #cdd6f4;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.section-title:not(:first-child) {
+  margin-top: 10px;
+}
+.padding-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0 2px 18px;
+}
+.padding-row.hidden {
+  display: none !important;
+}
+.padding-row input {
+  width: 60px;
+  background: #11111b;
+  border: 1px solid #45475a;
+  color: #eee;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+}
+.shot-loading {
+  color: #a6adc8;
+  margin-top: 8px;
 }
 .radio-row {
   display: flex;
@@ -193,6 +229,8 @@ export function createOverlay(): Overlay {
   let targetDragging = false;
   let pickId = 0;
   let currentTarget: Element | null = null;
+  let screenshotEnabled = true;
+  let screenshotPadding = 30;
 
   function replaceShotUrl(url: string | null): void {
     if (currentShotUrl) URL.revokeObjectURL(currentShotUrl);
@@ -321,6 +359,58 @@ export function createOverlay(): Overlay {
     });
     settingsBody.appendChild(pathModeGroup);
 
+    const screenshotGroup = el("div", "setting-group");
+    const screenshotTitle = el("div", "setting-title");
+    screenshotTitle.textContent = "Show element screenshot";
+    screenshotGroup.appendChild(screenshotTitle);
+    const screenshotRadios: Record<"yes" | "no", HTMLInputElement> = {} as any;
+    const paddingRow = el("div", "padding-row");
+    const paddingInput = el("input");
+    (["yes", "no"] as const).forEach((value) => {
+      const row = el("div", "radio-row");
+      const input = el("input");
+      input.type = "radio";
+      input.name = "screenshot-enabled";
+      input.value = value;
+      const id = `thisone-screenshot-${value}`;
+      input.id = id;
+      const label = el("label");
+      label.htmlFor = id;
+      label.textContent = value === "yes" ? "Yes" : "No";
+      input.addEventListener("change", () => {
+        screenshotEnabled = value === "yes";
+        saveScreenshotEnabled(screenshotEnabled);
+        paddingRow.classList.toggle("hidden", !screenshotEnabled);
+        if (currentTarget) renderSelection(currentTarget);
+      });
+      screenshotRadios[value] = input;
+      row.append(input, label);
+      screenshotGroup.appendChild(row);
+    });
+    const paddingLabel = el("label");
+    paddingLabel.htmlFor = "thisone-padding";
+    paddingLabel.textContent = "Padding, px";
+    paddingInput.type = "number";
+    paddingInput.id = "thisone-padding";
+    paddingInput.min = "0";
+    paddingInput.value = String(loadScreenshotPadding());
+    paddingInput.addEventListener("change", () => {
+      const parsed = Number(paddingInput.value);
+      screenshotPadding =
+        Number.isFinite(parsed) && parsed >= 0 ? parsed : screenshotPadding;
+      paddingInput.value = String(screenshotPadding);
+      saveScreenshotPadding(screenshotPadding);
+      if (currentTarget) renderSelection(currentTarget);
+    });
+    paddingRow.append(paddingLabel, paddingInput);
+    screenshotGroup.appendChild(paddingRow);
+    settingsBody.appendChild(screenshotGroup);
+
+    screenshotEnabled = loadScreenshotEnabled();
+    screenshotPadding = loadScreenshotPadding();
+    screenshotRadios[screenshotEnabled ? "yes" : "no"].checked = true;
+    paddingRow.classList.toggle("hidden", !screenshotEnabled);
+
     panel.append(header, settings, body);
     root.appendChild(panel);
 
@@ -397,12 +487,23 @@ export function createOverlay(): Overlay {
     });
 
     pathRow.append(pathEl);
-    const imgStatus = el("div", "status");
-    body.append(pathRow, pathStatus);
+    const pathTitle = el("div", "section-title");
+    pathTitle.textContent = "Path";
+    body.append(pathTitle, pathRow, pathStatus);
 
-    captureElementScreenshot(target, host)
+    if (!screenshotEnabled) return;
+
+    const shotTitle = el("div", "section-title");
+    shotTitle.textContent = "Screenshot";
+    const loading = el("div", "shot-loading");
+    loading.textContent = "Делаем скриншот";
+    const imgStatus = el("div", "status");
+    body.append(shotTitle, loading);
+
+    captureElementScreenshot(target, host, screenshotPadding)
       .then((blob) => {
         if (myPickId !== pickId) return;
+        loading.remove();
         const img = el("img", "shot");
         img.alt = "screenshot";
         const url = URL.createObjectURL(blob);
@@ -415,6 +516,7 @@ export function createOverlay(): Overlay {
       })
       .catch(() => {
         if (myPickId !== pickId) return;
+        loading.remove();
         imgStatus.textContent = "Screenshot failed";
         imgStatus.classList.add("fail");
         body.append(imgStatus);

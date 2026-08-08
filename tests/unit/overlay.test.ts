@@ -530,4 +530,125 @@ describe("overlay", () => {
     expect(children).toEqual(["header", "settings", "body"]);
     o.destroy();
   });
+
+  function screenshotRadio(value: "yes" | "no") {
+    return shadow().querySelector(
+      `input[name="screenshot-enabled"][value="${value}"]`,
+    ) as HTMLInputElement;
+  }
+  function paddingInput() {
+    return shadow().querySelector("#thisone-padding") as HTMLInputElement;
+  }
+  function shotLoading() {
+    return shadow().querySelector(".shot-loading") as HTMLElement;
+  }
+  function sectionTitles() {
+    return Array.from(shadow().querySelectorAll(".section-title")).map(
+      (n) => n.textContent,
+    );
+  }
+
+  it("shows Path and Screenshot section titles when a screenshot is picked", async () => {
+    const o = createOverlay();
+    const target = document.createElement("button");
+    document.body.appendChild(target);
+    o.open();
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+    expect(sectionTitles()).toEqual(["Path", "Screenshot"]);
+    o.destroy();
+  });
+
+  it("shows a 'Делаем скриншот' loader before the image resolves", async () => {
+    let resolveCapture!: (b: Blob) => void;
+    vi.spyOn(screenshot, "captureElementScreenshot").mockReturnValue(
+      new Promise((r) => (resolveCapture = r)),
+    );
+    const o = createOverlay();
+    const target = document.createElement("button");
+    document.body.appendChild(target);
+    o.open();
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+
+    expect(shotLoading().textContent).toBe("Делаем скриншот");
+    expect(shadow().querySelector("img.shot")).toBeNull();
+
+    resolveCapture(new Blob(["x"], { type: "image/png" }));
+    await tick();
+    expect(shadow().querySelector(".shot-loading")).toBeNull();
+    expect(img().src).toBe("blob:fake");
+    o.destroy();
+  });
+
+  it("screenshot defaults to enabled with padding 30", () => {
+    const o = createOverlay();
+    o.open();
+    expect(screenshotRadio("yes").checked).toBe(true);
+    expect(screenshotRadio("no").checked).toBe(false);
+    expect(paddingInput().value).toBe("30");
+    o.destroy();
+  });
+
+  it("selecting 'no' hides the padding row and the screenshot section on the next pick", async () => {
+    const o = createOverlay();
+    const target = document.createElement("button");
+    document.body.appendChild(target);
+    o.open();
+
+    screenshotRadio("no").click();
+    expect(
+      paddingInput().offsetParent === null ||
+        paddingInput().closest(".padding-row.hidden"),
+    ).toBeTruthy();
+
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+    expect(sectionTitles()).toEqual(["Path"]);
+    expect(shadow().querySelector("img.shot")).toBeNull();
+    expect(shadow().querySelector(".shot-loading")).toBeNull();
+    o.destroy();
+  });
+
+  it("changing the padding is used on the next screenshot capture", async () => {
+    const o = createOverlay();
+    const target = document.createElement("button");
+    document.body.appendChild(target);
+    o.open();
+
+    paddingInput().value = "50";
+    paddingInput().dispatchEvent(new Event("change", { bubbles: true }));
+
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+    expect(screenshot.captureElementScreenshot).toHaveBeenLastCalledWith(
+      target,
+      expect.anything(),
+      50,
+    );
+    o.destroy();
+  });
+
+  it("screenshot enabled flag and padding persist across a fresh overlay instance", () => {
+    const o1 = createOverlay();
+    o1.open();
+    screenshotRadio("no").click();
+    paddingInput().value = "40";
+    paddingInput().dispatchEvent(new Event("change", { bubbles: true }));
+    o1.destroy();
+
+    const o2 = createOverlay();
+    o2.open();
+    expect(screenshotRadio("no").checked).toBe(true);
+    expect(paddingInput().value).toBe("40");
+    o2.destroy();
+  });
 });
