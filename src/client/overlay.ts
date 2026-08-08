@@ -91,13 +91,39 @@ const STYLE = `
   background: #11111b; border: 1px solid #45475a; flex: 1; min-width: 0;
 }
 .path:hover { border-color: #89b4fa; }
-.path-mode-toggle {
-  cursor: pointer; border: 1px solid #585b70; background: #11111b; color: #a6adc8;
-  padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; flex-shrink: 0;
+.setting-group {
+  margin-top: 8px;
 }
-.path-mode-toggle:hover { background: #313244; color: #eee; border-color: #89b4fa; }
-.path-mode-toggle.active { color: #89b4fa; border-color: #89b4fa; background: rgba(137,180,250,.12); }
-.path-mode-toggle.active:hover { background: #313244; }
+.setting-group:first-child {
+  margin-top: 0;
+}
+.setting-title {
+  color: #cdd6f4;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.radio-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+}
+.radio-row label {
+  cursor: pointer;
+}
+.qmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid #585b70;
+  color: #a6adc8;
+  font-size: 9px;
+  cursor: help;
+  flex-shrink: 0;
+}
 img.shot {
   display: block; max-width: 100%; margin-top: 8px; cursor: pointer;
   border: 1px solid #45475a; border-radius: 6px;
@@ -174,6 +200,7 @@ export function createOverlay(): Overlay {
   let targetPosition: TargetPosition = DEFAULT_TARGET_POSITION;
   let targetDragging = false;
   let pickId = 0;
+  let currentTarget: Element | null = null;
 
   function replaceShotUrl(url: string | null): void {
     if (currentShotUrl) URL.revokeObjectURL(currentShotUrl);
@@ -268,6 +295,40 @@ export function createOverlay(): Overlay {
       saveSettingsExpanded(expanded);
     });
 
+    const PATH_MODE_HELP: Record<PathMode, string> = {
+      tree: "Show file-tree path",
+      root: "Show path from root component",
+    };
+    const pathModeGroup = el("div", "setting-group");
+    const pathModeTitle = el("div", "setting-title");
+    pathModeTitle.textContent = "Path mode";
+    pathModeGroup.appendChild(pathModeTitle);
+    const pathModeRadios: Record<PathMode, HTMLInputElement> = {} as any;
+    (["tree", "root"] as PathMode[]).forEach((mode) => {
+      const row = el("div", "radio-row");
+      const input = el("input");
+      input.type = "radio";
+      input.name = "path-mode";
+      input.value = mode;
+      const id = `thisone-path-mode-${mode}`;
+      input.id = id;
+      const label = el("label");
+      label.htmlFor = id;
+      label.textContent = mode === "tree" ? "File tree" : "From root component";
+      const qmark = el("span", "qmark");
+      qmark.textContent = "?";
+      qmark.title = PATH_MODE_HELP[mode];
+      input.addEventListener("change", () => {
+        pathMode = mode;
+        savePathMode(pathMode);
+        if (currentTarget) renderSelection(currentTarget);
+      });
+      pathModeRadios[mode] = input;
+      row.append(input, label, qmark);
+      pathModeGroup.appendChild(row);
+    });
+    settingsBody.appendChild(pathModeGroup);
+
     panel.append(header, settings, body);
     root.appendChild(panel);
 
@@ -282,6 +343,7 @@ export function createOverlay(): Overlay {
 
     targetEnabled = loadTargetEnabled();
     pathMode = loadPathMode();
+    pathModeRadios[pathMode].checked = true;
     targetPosition = loadTargetPosition() ?? DEFAULT_TARGET_POSITION;
     targetToggle.classList.toggle("active", targetEnabled);
     targetBtn.classList.toggle("hidden", !targetEnabled);
@@ -316,13 +378,13 @@ export function createOverlay(): Overlay {
   }
 
   function renderSelection(target: Element): void {
+    currentTarget = target;
     const myPickId = ++pickId;
     replaceShotUrl(null);
     body.innerHTML = "";
 
     const pathRow = el("div", "path-row");
     const pathEl = el("div", "path");
-    const modeToggle = el("button", "path-mode-toggle");
     const pathStatus = el("div", "status");
 
     function currentPathText(): string {
@@ -333,13 +395,6 @@ export function createOverlay(): Overlay {
 
     function renderPathText(): void {
       pathEl.textContent = currentPathText();
-      modeToggle.innerHTML =
-        pathMode === "tree" ? folderIcon(14) : branchIcon(14);
-      modeToggle.classList.toggle("active", pathMode === "root");
-      modeToggle.title =
-        pathMode === "tree"
-          ? "Show path from root component"
-          : "Show file-tree path";
     }
     renderPathText();
 
@@ -348,14 +403,8 @@ export function createOverlay(): Overlay {
         showStatus(pathStatus, r.ok),
       );
     });
-    modeToggle.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      pathMode = pathMode === "tree" ? "root" : "tree";
-      savePathMode(pathMode);
-      renderPathText();
-    });
 
-    pathRow.append(pathEl, modeToggle);
+    pathRow.append(pathEl);
     const imgStatus = el("div", "status");
     body.append(pathRow, pathStatus);
 

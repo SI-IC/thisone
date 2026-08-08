@@ -16,8 +16,10 @@ function pathEl() {
 function img() {
   return shadow().querySelector("img.shot") as HTMLImageElement;
 }
-function pathModeToggle() {
-  return shadow().querySelector(".path-mode-toggle") as HTMLElement;
+function pathModeRadio(mode: "tree" | "root") {
+  return shadow().querySelector(
+    `input[name="path-mode"][value="${mode}"]`,
+  ) as HTMLInputElement;
 }
 function settingsHeader() {
   return shadow().querySelector(".settings-header") as HTMLElement;
@@ -413,7 +415,7 @@ describe("overlay", () => {
     o.destroy();
   });
 
-  it("defaults to file-tree path mode with an inactive toggle", async () => {
+  it("defaults to file-tree path mode selected in Settings", async () => {
     const o = createOverlay();
     const target = document.createElement("button");
     document.body.appendChild(target);
@@ -423,12 +425,12 @@ describe("overlay", () => {
     );
     await tick();
 
-    expect(pathModeToggle().classList.contains("active")).toBe(false);
-    expect(pathModeToggle().title).toBe("Show path from root component");
+    expect(pathModeRadio("tree").checked).toBe(true);
+    expect(pathModeRadio("root").checked).toBe(false);
     o.destroy();
   });
 
-  it("clicking the mode toggle switches to the root-mount path for the same selection", async () => {
+  it("selecting the root-mount radio switches the path for the same selection", async () => {
     const o = createOverlay();
     const target = document.createElement("button");
     document.body.appendChild(target);
@@ -446,28 +448,11 @@ describe("overlay", () => {
     await tick();
     const before = pathEl().textContent;
 
-    pathModeToggle().dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(pathModeToggle().classList.contains("active")).toBe(true);
-    expect(pathModeToggle().title).toBe("Show file-tree path");
+    pathModeRadio("root").click();
+    await tick();
+    expect(pathModeRadio("root").checked).toBe(true);
     expect(pathEl().textContent).not.toBe(before);
     expect(pathEl().textContent).toMatch(/App .*Counter/);
-    o.destroy();
-  });
-
-  it("clicking the mode toggle does not also trigger the path's copy handler (no bubbling)", async () => {
-    vi.spyOn(clipboard, "copyText").mockResolvedValue({ ok: true });
-    const o = createOverlay();
-    const target = document.createElement("button");
-    document.body.appendChild(target);
-    o.open();
-    target.dispatchEvent(
-      new MouseEvent("click", { bubbles: true, composed: true }),
-    );
-    await tick();
-
-    pathModeToggle().dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    await tick();
-    expect(shadow().querySelector(".path-row + .status")?.textContent).toBe("");
     o.destroy();
   });
 
@@ -480,7 +465,7 @@ describe("overlay", () => {
       new MouseEvent("click", { bubbles: true, composed: true }),
     );
     await tick();
-    pathModeToggle().dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    pathModeRadio("root").click();
     o1.destroy();
 
     const o2 = createOverlay();
@@ -491,8 +476,33 @@ describe("overlay", () => {
       new MouseEvent("click", { bubbles: true, composed: true }),
     );
     await tick();
-    expect(pathModeToggle().classList.contains("active")).toBe(true);
+    expect(pathModeRadio("root").checked).toBe(true);
     o2.destroy();
+  });
+
+  it("no .path-mode-toggle button remains next to the path", async () => {
+    const o = createOverlay();
+    const target = document.createElement("button");
+    document.body.appendChild(target);
+    o.open();
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+    expect(shadow().querySelector(".path-mode-toggle")).toBeNull();
+    o.destroy();
+  });
+
+  it("each path-mode radio has a question-mark tooltip explaining it", () => {
+    const o = createOverlay();
+    o.open();
+    const qmarks = shadow().querySelectorAll(
+      ".setting-group .radio-row .qmark",
+    );
+    expect(qmarks).toHaveLength(2);
+    expect((qmarks[0] as HTMLElement).title.length).toBeGreaterThan(0);
+    expect((qmarks[1] as HTMLElement).title.length).toBeGreaterThan(0);
+    o.destroy();
   });
 
   it("Settings panel starts collapsed and expands on click, persisting the state", () => {

@@ -1946,13 +1946,39 @@
   background: #11111b; border: 1px solid #45475a; flex: 1; min-width: 0;
 }
 .path:hover { border-color: #89b4fa; }
-.path-mode-toggle {
-  cursor: pointer; border: 1px solid #585b70; background: #11111b; color: #a6adc8;
-  padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; flex-shrink: 0;
+.setting-group {
+  margin-top: 8px;
 }
-.path-mode-toggle:hover { background: #313244; color: #eee; border-color: #89b4fa; }
-.path-mode-toggle.active { color: #89b4fa; border-color: #89b4fa; background: rgba(137,180,250,.12); }
-.path-mode-toggle.active:hover { background: #313244; }
+.setting-group:first-child {
+  margin-top: 0;
+}
+.setting-title {
+  color: #cdd6f4;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.radio-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 0;
+}
+.radio-row label {
+  cursor: pointer;
+}
+.qmark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 1px solid #585b70;
+  color: #a6adc8;
+  font-size: 9px;
+  cursor: help;
+  flex-shrink: 0;
+}
 img.shot {
   display: block; max-width: 100%; margin-top: 8px; cursor: pointer;
   border: 1px solid #45475a; border-radius: 6px;
@@ -1992,12 +2018,6 @@ img.shot:hover { border-color: #89b4fa; }
   function targetIcon(size) {
     return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg>`;
   }
-  function folderIcon(size) {
-    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z"/></svg>`;
-  }
-  function branchIcon(size) {
-    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/><path d="M12 7v4M12 11L6 17M12 11l6 6"/></svg>`;
-  }
   var EDGE_BUTTON_SIZE = 44;
   var DEFAULT_TARGET_POSITION = { edge: "right", offset: 0.5 };
   function createOverlay() {
@@ -2022,6 +2042,7 @@ img.shot:hover { border-color: #89b4fa; }
     let targetPosition = DEFAULT_TARGET_POSITION;
     let targetDragging = false;
     let pickId = 0;
+    let currentTarget = null;
     function replaceShotUrl(url) {
       if (currentShotUrl) URL.revokeObjectURL(currentShotUrl);
       currentShotUrl = url;
@@ -2103,6 +2124,39 @@ img.shot:hover { border-color: #89b4fa; }
         settingsArrow.classList.toggle("expanded", expanded);
         saveSettingsExpanded(expanded);
       });
+      const PATH_MODE_HELP = {
+        tree: "Show file-tree path",
+        root: "Show path from root component"
+      };
+      const pathModeGroup = el("div", "setting-group");
+      const pathModeTitle = el("div", "setting-title");
+      pathModeTitle.textContent = "Path mode";
+      pathModeGroup.appendChild(pathModeTitle);
+      const pathModeRadios = {};
+      ["tree", "root"].forEach((mode) => {
+        const row = el("div", "radio-row");
+        const input = el("input");
+        input.type = "radio";
+        input.name = "path-mode";
+        input.value = mode;
+        const id = `thisone-path-mode-${mode}`;
+        input.id = id;
+        const label = el("label");
+        label.htmlFor = id;
+        label.textContent = mode === "tree" ? "File tree" : "From root component";
+        const qmark = el("span", "qmark");
+        qmark.textContent = "?";
+        qmark.title = PATH_MODE_HELP[mode];
+        input.addEventListener("change", () => {
+          pathMode = mode;
+          savePathMode(pathMode);
+          if (currentTarget) renderSelection(currentTarget);
+        });
+        pathModeRadios[mode] = input;
+        row.append(input, label, qmark);
+        pathModeGroup.appendChild(row);
+      });
+      settingsBody.appendChild(pathModeGroup);
       panel.append(header, settings, body);
       root.appendChild(panel);
       pickHint = el("div", "pickhint hidden");
@@ -2115,6 +2169,7 @@ img.shot:hover { border-color: #89b4fa; }
       root.append(pickHint, box, tip, targetBtn);
       targetEnabled = loadTargetEnabled();
       pathMode = loadPathMode();
+      pathModeRadios[pathMode].checked = true;
       targetPosition = (_a2 = loadTargetPosition()) != null ? _a2 : DEFAULT_TARGET_POSITION;
       targetToggle.classList.toggle("active", targetEnabled);
       targetBtn.classList.toggle("hidden", !targetEnabled);
@@ -2144,21 +2199,18 @@ img.shot:hover { border-color: #89b4fa; }
       }, 1500);
     }
     function renderSelection(target) {
+      currentTarget = target;
       const myPickId = ++pickId;
       replaceShotUrl(null);
       body.innerHTML = "";
       const pathRow = el("div", "path-row");
       const pathEl = el("div", "path");
-      const modeToggle = el("button", "path-mode-toggle");
       const pathStatus = el("div", "status");
       function currentPathText() {
         return pathMode === "tree" ? formatElementPath(target) : formatElementPathFromRoot(target);
       }
       function renderPathText() {
         pathEl.textContent = currentPathText();
-        modeToggle.innerHTML = pathMode === "tree" ? folderIcon(14) : branchIcon(14);
-        modeToggle.classList.toggle("active", pathMode === "root");
-        modeToggle.title = pathMode === "tree" ? "Show path from root component" : "Show file-tree path";
       }
       renderPathText();
       pathEl.addEventListener("click", () => {
@@ -2166,13 +2218,7 @@ img.shot:hover { border-color: #89b4fa; }
           (r) => showStatus(pathStatus, r.ok)
         );
       });
-      modeToggle.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        pathMode = pathMode === "tree" ? "root" : "tree";
-        savePathMode(pathMode);
-        renderPathText();
-      });
-      pathRow.append(pathEl, modeToggle);
+      pathRow.append(pathEl);
       const imgStatus = el("div", "status");
       body.append(pathRow, pathStatus);
       captureElementScreenshot(target, host).then((blob) => {
