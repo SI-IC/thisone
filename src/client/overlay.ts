@@ -287,12 +287,12 @@ export function createOverlay(): Overlay {
   }
 
   function reclampPosition(): void {
-    const clamped = clampPanelPosition(
-      parseFloat(panel.style.left) || 0,
-      parseFloat(panel.style.top) || 0,
-    );
+    if (dragOffset) return;
+    const rect = panel.getBoundingClientRect();
+    const clamped = clampPanelPosition(rect.left, rect.top);
     panel.style.left = clamped.x + "px";
     panel.style.top = clamped.y + "px";
+    savePosition(clamped);
   }
 
   function applyPosition(): void {
@@ -564,7 +564,10 @@ export function createOverlay(): Overlay {
         img.addEventListener("click", () => {
           void copyImage(blob).then((r) => showStatus(imgStatus, r.ok));
         });
-        img.addEventListener("load", reclampPosition);
+        img.addEventListener("load", () => {
+          if (myPickId !== pickId) return;
+          reclampPosition();
+        });
         body.append(img, imgStatus);
         reclampPosition();
       })

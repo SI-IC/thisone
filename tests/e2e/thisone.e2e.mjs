@@ -258,7 +258,7 @@ try {
   );
 
   await check(
-    "edge:boundary — dragging the panel past the bottom edge only clamps the header, not the whole panel, off-screen",
+    "edge:boundary — dragging the panel past the bottom edge clamps the whole panel inside the viewport",
     async () => {
       const header = page.locator("#__thisone_root >> css=.header");
       const box = await header.boundingBox();
@@ -268,10 +268,10 @@ try {
       await page.mouse.move(box.x + 10, viewport.height + 500);
       await page.mouse.up();
       const top = await panel.evaluate((elm) => parseFloat(elm.style.top));
-      const headerHeight = await header.evaluate((elm) => elm.offsetHeight);
+      const panelHeight = await panel.evaluate((elm) => elm.offsetHeight);
       assert.ok(
-        top + headerHeight <= viewport.height + 1,
-        `header should stay within the viewport, got top=${top} headerHeight=${headerHeight} viewportHeight=${viewport.height}`,
+        top + panelHeight <= viewport.height + 1,
+        `panel should stay within the viewport, got top=${top} panelHeight=${panelHeight} viewportHeight=${viewport.height}`,
       );
       await page.keyboard.press("Escape");
     },

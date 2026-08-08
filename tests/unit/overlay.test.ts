@@ -303,14 +303,88 @@ describe("overlay", () => {
     o.destroy();
   });
 
-  it("edge:boundary — dragging the panel past the bottom only clamps the header inside the viewport", () => {
+  it("edge:boundary — dragging the panel past the bottom clamps the whole panel inside the viewport", () => {
     const o = createOverlay();
     o.open();
     const header = shadow().querySelector(".header") as HTMLElement;
     drag(header, [20, 20], [20, 5000]);
-    const headerHeight = header.offsetHeight;
+    const panelHeight = panel().offsetHeight;
     const top = parseFloat(panel().style.top);
-    expect(top + headerHeight).toBeLessThanOrEqual(window.innerHeight);
+    expect(top + panelHeight).toBeLessThanOrEqual(window.innerHeight);
+    o.destroy();
+  });
+
+  it("edge:boundary — re-clamps a panel dragged near the bottom once a pick grows it taller than the remaining space", async () => {
+    const o = createOverlay();
+    o.open();
+    const header = shadow().querySelector(".header") as HTMLElement;
+    drag(header, [20, 20], [20, 5000]);
+    const topBeforePick = parseFloat(panel().style.top);
+
+    Object.defineProperty(panel(), "offsetHeight", {
+      value: 600,
+      configurable: true,
+    });
+    const target = document.createElement("button");
+    document.body.appendChild(target);
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+
+    const topAfterPick = parseFloat(panel().style.top);
+    expect(topAfterPick + 600).toBeLessThanOrEqual(window.innerHeight);
+    expect(topAfterPick).toBeLessThan(topBeforePick);
+    o.destroy();
+  });
+
+  it("persists the re-clamped position, so a reload doesn't restore the stale pre-pick spot", async () => {
+    const o = createOverlay();
+    o.open();
+    const header = shadow().querySelector(".header") as HTMLElement;
+    drag(header, [20, 20], [20, 5000]);
+
+    Object.defineProperty(panel(), "offsetHeight", {
+      value: 600,
+      configurable: true,
+    });
+    const target = document.createElement("button");
+    document.body.appendChild(target);
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+
+    const top = parseFloat(panel().style.top);
+    const left = parseFloat(panel().style.left);
+    const saved = JSON.parse(localStorage.getItem("thisone:pos")!);
+    expect(saved).toEqual({ x: left, y: top });
+    o.destroy();
+  });
+
+  it("edge:race — a pick's re-clamp does not fight an in-progress drag", async () => {
+    const o = createOverlay();
+    o.open();
+    const header = shadow().querySelector(".header") as HTMLElement;
+    const topBeforeDrag = panel().style.top;
+
+    header.dispatchEvent(
+      new MouseEvent("mousedown", { bubbles: true, clientX: 20, clientY: 20 }),
+    );
+
+    Object.defineProperty(panel(), "offsetHeight", {
+      value: 600,
+      configurable: true,
+    });
+    const target = document.createElement("button");
+    document.body.appendChild(target);
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+
+    expect(panel().style.top).toBe(topBeforeDrag);
+    window.dispatchEvent(new MouseEvent("mouseup"));
     o.destroy();
   });
 

@@ -2186,12 +2186,12 @@ img.shot:hover { border-color: #89b4fa; }
       };
     }
     function reclampPosition() {
-      const clamped = clampPanelPosition(
-        parseFloat(panel.style.left) || 0,
-        parseFloat(panel.style.top) || 0
-      );
+      if (dragOffset) return;
+      const rect = panel.getBoundingClientRect();
+      const clamped = clampPanelPosition(rect.left, rect.top);
       panel.style.left = clamped.x + "px";
       panel.style.top = clamped.y + "px";
+      savePosition(clamped);
     }
     function applyPosition() {
       var _a2;
@@ -2435,7 +2435,10 @@ img.shot:hover { border-color: #89b4fa; }
         img.addEventListener("click", () => {
           void copyImage(blob).then((r) => showStatus(imgStatus, r.ok));
         });
-        img.addEventListener("load", reclampPosition);
+        img.addEventListener("load", () => {
+          if (myPickId !== pickId) return;
+          reclampPosition();
+        });
         body.append(img, imgStatus);
         reclampPosition();
       }).catch(() => {
