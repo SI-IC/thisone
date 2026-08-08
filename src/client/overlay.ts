@@ -73,6 +73,7 @@ const STYLE = `
   padding: 6px 10px;
   cursor: pointer;
   color: #a6adc8;
+  font-size: 13px;
   user-select: none;
 }
 .settings-header:hover {
@@ -86,7 +87,7 @@ const STYLE = `
   transform: rotate(90deg);
 }
 .settings-body {
-  padding: 0 10px 8px;
+  padding: 0 10px 8px 25px;
 }
 .hint { color: #a6adc8; }
 .path-row { display: flex; align-items: center; gap: 6px; }
@@ -113,7 +114,7 @@ const STYLE = `
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 0 2px 18px;
+  padding: 4px 0 2px 5px;
 }
 .padding-row input {
   width: 60px;
@@ -123,6 +124,20 @@ const STYLE = `
   border-radius: 4px;
   padding: 2px 6px;
   font-size: 11px;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.padding-row input::-webkit-outer-spin-button,
+.padding-row input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.padding-row input:hover {
+  border-color: #89b4fa;
+}
+.padding-row input:focus {
+  border-color: #89b4fa;
+  outline: none;
 }
 .shot-loading {
   color: #a6adc8;
@@ -136,6 +151,14 @@ const STYLE = `
 }
 .radio-row label {
   cursor: pointer;
+}
+.radio-row input[type="radio"] {
+  accent-color: #89b4fa;
+  cursor: pointer;
+}
+.radio-row input[type="radio"]:focus-visible {
+  outline: 1px solid #89b4fa;
+  outline-offset: 2px;
 }
 .qmark {
   display: inline-flex;
@@ -508,7 +531,7 @@ export function createOverlay(): Overlay {
     const shotTitle = el("div", "section-title");
     shotTitle.textContent = "Screenshot";
     const loading = el("div", "shot-loading");
-    loading.textContent = "Делаем скриншот";
+    loading.textContent = "Taking screenshot";
     const imgStatus = el("div", "status");
     body.append(shotTitle, loading);
 

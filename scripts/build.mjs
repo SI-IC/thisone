@@ -20,7 +20,10 @@ import {
 } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { PLUGIN_BUNDLE_EXTERNAL } from "./build-config.mjs";
+import {
+  CLIENT_BUILD_OPTIONS,
+  PLUGIN_BUNDLE_EXTERNAL,
+} from "./build-config.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = resolve(root, "dist");
@@ -46,11 +49,7 @@ export async function main() {
   await build({
     entryPoints: [resolve(root, "src/client/index.ts")],
     outfile: resolve(dist, "client.js"),
-    bundle: true,
-    format: "iife",
-    platform: "browser",
-    target: "es2019",
-    sourcemap: false,
+    ...CLIENT_BUILD_OPTIONS,
   });
 
   // Do not change, because tsconfig.dts.json include=["src/plugin/index.ts"] -> tsc emits only dist/plugin/index.d.ts, which the relocation below expects

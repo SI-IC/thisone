@@ -13,9 +13,7 @@ export default defineConfig({
     host: "127.0.0.1",
     port,
     strictPort: true,
-    hmr: proxiedByDevDemoOnPort
-      ? { clientPort: proxiedByDevDemoOnPort, path: "preact-demo-hmr" }
-      : undefined,
+    hmr: proxiedByDevDemoOnPort ? { path: "preact-demo-hmr" } : undefined,
   },
   esbuild: {
     jsx: "automatic",

@@ -564,7 +564,7 @@ describe("overlay", () => {
     o.destroy();
   });
 
-  it("shows a 'Делаем скриншот' loader before the image resolves", async () => {
+  it("shows a 'Taking screenshot' loader before the image resolves", async () => {
     let resolveCapture!: (b: Blob) => void;
     vi.spyOn(screenshot, "captureElementScreenshot").mockReturnValue(
       new Promise((r) => (resolveCapture = r)),
@@ -578,7 +578,7 @@ describe("overlay", () => {
     );
     await tick();
 
-    expect(shotLoading().textContent).toBe("Делаем скриншот");
+    expect(shotLoading().textContent).toBe("Taking screenshot");
     expect(shadow().querySelector("img.shot")).toBeNull();
 
     resolveCapture(new Blob(["x"], { type: "image/png" }));

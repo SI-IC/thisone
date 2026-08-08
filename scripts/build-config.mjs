@@ -4,3 +4,11 @@ export const PLUGIN_BUNDLE_EXTERNAL = [
   "@vue/compiler-core",
   "svelte",
 ];
+
+export const CLIENT_BUILD_OPTIONS = {
+  bundle: true,
+  format: "iife",
+  platform: "browser",
+  target: "es2019",
+  sourcemap: false,
+};

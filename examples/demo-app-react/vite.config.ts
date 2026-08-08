@@ -13,8 +13,6 @@ export default defineConfig({
     host: "127.0.0.1",
     port,
     strictPort: true,
-    hmr: proxiedByDevDemoOnPort
-      ? { clientPort: proxiedByDevDemoOnPort, path: "react-demo-hmr" }
-      : undefined,
+    hmr: proxiedByDevDemoOnPort ? { path: "react-demo-hmr" } : undefined,
   },
 });

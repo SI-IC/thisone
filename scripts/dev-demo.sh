@@ -11,15 +11,18 @@ fuser -k -TERM "${react_port}/tcp" "${preact_port}/tcp" "${svelte_port}/tcp" "${
 sleep 1
 fuser -k -KILL "${react_port}/tcp" "${preact_port}/tcp" "${svelte_port}/tcp" "${vue_port}/tcp" 2>/dev/null || true
 
+build_pid=""
 react_pid=""
 preact_pid=""
 svelte_pid=""
 vue_pid=""
 cleanup() {
+  [ -n "$build_pid" ] && kill "$build_pid" 2>/dev/null || true
   [ -n "$react_pid" ] && kill "$react_pid" 2>/dev/null || true
   [ -n "$preact_pid" ] && kill "$preact_pid" 2>/dev/null || true
   [ -n "$svelte_pid" ] && kill "$svelte_pid" 2>/dev/null || true
   [ -n "$vue_pid" ] && kill "$vue_pid" 2>/dev/null || true
+  [ -n "$build_pid" ] && wait "$build_pid" 2>/dev/null || true
   [ -n "$react_pid" ] && wait "$react_pid" 2>/dev/null || true
   [ -n "$preact_pid" ] && wait "$preact_pid" 2>/dev/null || true
   [ -n "$svelte_pid" ] && wait "$svelte_pid" 2>/dev/null || true
@@ -29,6 +32,26 @@ trap cleanup EXIT
 
 cd "$root"
 pnpm build
+
+node scripts/build-watch.mjs >/tmp/thisone-build-watch.log 2>&1 &
+build_pid=$!
+
+ready=0
+for _ in $(seq 1 50); do
+  if ! kill -0 "$build_pid" 2>/dev/null; then
+    break
+  fi
+  if grep -q "watching src/client" /tmp/thisone-build-watch.log 2>/dev/null; then
+    ready=1
+    break
+  fi
+  sleep 0.2
+done
+if [ "$ready" -ne 1 ]; then
+  echo "build-watch did not become ready, see log:" >&2
+  cat /tmp/thisone-build-watch.log >&2
+  exit 1
+fi
 
 cd "$root/examples/demo-app-react"
 THISONE_DEMO_REACT_PORT="$react_port" THISONE_DEMO_PORT="$vue_port" \
