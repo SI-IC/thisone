@@ -2177,13 +2177,21 @@ img.shot:hover { border-color: #89b4fa; }
     }
     function clampPanelPosition(x, y) {
       const width = panel.getBoundingClientRect().width || panel.offsetWidth;
-      const headerHeight = header.getBoundingClientRect().height || header.offsetHeight;
+      const height = panel.getBoundingClientRect().height || panel.offsetHeight;
       const maxX = Math.max(0, win.innerWidth - width);
-      const maxY = Math.max(0, win.innerHeight - headerHeight);
+      const maxY = Math.max(0, win.innerHeight - height);
       return {
         x: Math.min(Math.max(0, x), maxX),
         y: Math.min(Math.max(0, y), maxY)
       };
+    }
+    function reclampPosition() {
+      const clamped = clampPanelPosition(
+        parseFloat(panel.style.left) || 0,
+        parseFloat(panel.style.top) || 0
+      );
+      panel.style.left = clamped.x + "px";
+      panel.style.top = clamped.y + "px";
     }
     function applyPosition() {
       var _a2;
@@ -2407,6 +2415,7 @@ img.shot:hover { border-color: #89b4fa; }
       const pathTitle = el("div", "section-title");
       pathTitle.textContent = "Path";
       body.append(pathTitle, pathRow, pathStatus);
+      reclampPosition();
       if (!screenshotEnabled) return;
       const shotTitle = el("div", "section-title");
       shotTitle.textContent = "Screenshot";
@@ -2426,7 +2435,9 @@ img.shot:hover { border-color: #89b4fa; }
         img.addEventListener("click", () => {
           void copyImage(blob).then((r) => showStatus(imgStatus, r.ok));
         });
+        img.addEventListener("load", reclampPosition);
         body.append(img, imgStatus);
+        reclampPosition();
       }).catch(() => {
         if (myPickId !== pickId) return;
         loading.remove();

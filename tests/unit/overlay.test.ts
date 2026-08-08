@@ -578,7 +578,7 @@ describe("overlay", () => {
     );
     await tick();
 
-    expect(shotLoading().textContent).toBe("Taking screenshot");
+    expect(shotLoading().getAttribute("aria-label")).toBe("Taking screenshot");
     expect(shadow().querySelector("img.shot")).toBeNull();
 
     resolveCapture(new Blob(["x"], { type: "image/png" }));

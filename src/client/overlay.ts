@@ -277,14 +277,22 @@ export function createOverlay(): Overlay {
 
   function clampPanelPosition(x: number, y: number): Position {
     const width = panel.getBoundingClientRect().width || panel.offsetWidth;
-    const headerHeight =
-      header.getBoundingClientRect().height || header.offsetHeight;
+    const height = panel.getBoundingClientRect().height || panel.offsetHeight;
     const maxX = Math.max(0, win.innerWidth - width);
-    const maxY = Math.max(0, win.innerHeight - headerHeight);
+    const maxY = Math.max(0, win.innerHeight - height);
     return {
       x: Math.min(Math.max(0, x), maxX),
       y: Math.min(Math.max(0, y), maxY),
     };
+  }
+
+  function reclampPosition(): void {
+    const clamped = clampPanelPosition(
+      parseFloat(panel.style.left) || 0,
+      parseFloat(panel.style.top) || 0,
+    );
+    panel.style.left = clamped.x + "px";
+    panel.style.top = clamped.y + "px";
   }
 
   function applyPosition(): void {
@@ -532,6 +540,7 @@ export function createOverlay(): Overlay {
     const pathTitle = el("div", "section-title");
     pathTitle.textContent = "Path";
     body.append(pathTitle, pathRow, pathStatus);
+    reclampPosition();
 
     if (!screenshotEnabled) return;
 
@@ -555,7 +564,9 @@ export function createOverlay(): Overlay {
         img.addEventListener("click", () => {
           void copyImage(blob).then((r) => showStatus(imgStatus, r.ok));
         });
+        img.addEventListener("load", reclampPosition);
         body.append(img, imgStatus);
+        reclampPosition();
       })
       .catch(() => {
         if (myPickId !== pickId) return;
