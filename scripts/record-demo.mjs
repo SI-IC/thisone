@@ -14,6 +14,7 @@ const PANEL_POS = { x: 500, y: 96 };
 const CURSOR_HOST_ID = "__thisone_demo_cursor";
 const OVERLAY_HOST_ID = "__thisone_root";
 const TERMINAL_HOST_ID = "__thisone_demo_terminal";
+const COUNTER_BUTTON_TEXT = "count is";
 const START_POINT = { x: 70, y: 620 };
 const GLIDE_STEP_MS = 25;
 const MAX_GLIDE_STEPS = 400;
@@ -74,7 +75,8 @@ function installTerminal(hostId) {
   host.id = hostId;
   host.style.cssText =
     "position:fixed;left:0;bottom:0;width:900px;pointer-events:none;" +
-    "z-index:2147483646;transform:translateY(100%);" +
+    // Не менять, потому что thisone's .panel (overlay.ts) also uses 2147483646
+    "z-index:2147483645;transform:translateY(100%);" +
     "transition:transform 400ms ease-out";
   const shadow = host.attachShadow({ mode: "open" });
   shadow.innerHTML = `
@@ -84,6 +86,7 @@ function installTerminal(hostId) {
       .input {
         margin: 0 18px 16px; border: 1px solid #3a3934; border-radius: 6px;
         padding: 12px 14px; font-size: 14px; line-height: 1.6;
+        overflow-wrap: anywhere;
       }
       .prompt { color: #e8e6dc; }
       .path { color: #8a887e; }
@@ -119,7 +122,7 @@ function installTerminal(hostId) {
         const step = () => {
           typed.textContent += str[i];
           i += 1;
-          if (i < str.length) setTimeout(step, 45);
+          if (i < str.length) setTimeout(step, 90);
           else resolve();
         };
         step();
@@ -181,7 +184,7 @@ async function scenePickAndScreenshot(ctx) {
   await page.waitForTimeout(500);
 
   await clickAt(
-    page.locator('button:has-text("count is")'),
+    page.locator(`button:has-text("${COUNTER_BUTTON_TEXT}")`),
     "demo button",
     750,
     700,
@@ -217,6 +220,8 @@ async function sceneClaudeCodeChat(ctx) {
   const copiedPath = await page
     .locator("#__thisone_root >> css=.path")
     .innerText();
+  if (!copiedPath.trim())
+    throw new Error("terminal: .path was empty, nothing to paste");
 
   await page.keyboard.press("Escape");
   await page.waitForTimeout(500);
@@ -238,16 +243,17 @@ async function sceneClaudeCodeChat(ctx) {
   await page.waitForTimeout(900);
 
   await page.evaluate(() => window.__demoTerminal.setStatus("ok"));
-  await page.evaluate(() => {
+  await page.evaluate((text) => {
     const btn = [...document.querySelectorAll("button")].find((b) =>
-      b.textContent.includes("count is"),
+      b.textContent.includes(text),
     );
+    if (!btn) throw new Error(`terminal: no button matching "${text}" found`);
     btn.style.transition =
       "background-color 300ms ease-out, border-color 300ms ease-out, color 300ms ease-out";
     btn.style.backgroundColor = "#dc2626";
     btn.style.borderColor = "#dc2626";
     btn.style.color = "#ffffff";
-  });
+  }, COUNTER_BUTTON_TEXT);
   await page.waitForTimeout(1200);
 }
 

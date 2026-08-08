@@ -13,6 +13,7 @@ const demoDir = resolve(here, "../../examples/demo-app");
 const port = Number(process.argv[2]);
 assert.ok(Number.isInteger(port) && port > 0, "usage: thisone.e2e.mjs <port>");
 const base = `http://localhost:${port}`;
+const COUNTER_BUTTON_TEXT = "count is";
 
 const errors = [];
 function check(label, fn) {
@@ -71,7 +72,7 @@ try {
       .waitFor({ state: "visible", timeout: 2000 });
   });
 
-  await page.locator('button:has-text("count is")').click();
+  await page.locator(`button:has-text("${COUNTER_BUTTON_TEXT}")`).click();
   await check(
     "picking an element shows its path with component + line numbers",
     async () => {
@@ -94,14 +95,14 @@ try {
       const spage = await context.newPage();
       try {
         await spage.goto(base, { waitUntil: "networkidle" });
-        await spage.evaluate(() => {
+        await spage.evaluate((text) => {
           const spacer = document.createElement("div");
           spacer.style.height = `${window.innerHeight * 2}px`;
           spacer.style.backgroundColor = "rgb(0, 0, 220)";
           document.body.insertBefore(spacer, document.body.firstChild);
 
           const btn = [...document.querySelectorAll("button")].find((b) =>
-            b.textContent.includes("count is"),
+            b.textContent.includes(text),
           );
           const wrap = document.createElement("div");
           wrap.style.display = "inline-block";
@@ -114,14 +115,14 @@ try {
           const wrapHeight = wrap.getBoundingClientRect().height;
           const target = wrapTop - window.innerHeight / 2 + wrapHeight / 2;
           window.scrollTo(0, Math.max(0, target));
-        });
+        }, COUNTER_BUTTON_TEXT);
         await spage.keyboard.down("Alt");
         await spage.keyboard.press("KeyC");
         await spage.keyboard.up("Alt");
         await spage
           .locator("#__thisone_root >> css=.panel")
           .waitFor({ state: "visible", timeout: 2000 });
-        await spage.locator('button:has-text("count is")').click();
+        await spage.locator(`button:has-text("${COUNTER_BUTTON_TEXT}")`).click();
         const simg = spage.locator("#__thisone_root >> css=img.shot");
         await simg.waitFor({ state: "visible", timeout: 5000 });
         const scrollYAtCapture = await spage.evaluate(() => window.scrollY);
@@ -287,7 +288,7 @@ try {
       await page.keyboard.press("KeyC");
       await page.keyboard.up("Alt");
       await panel.waitFor({ state: "visible", timeout: 2000 });
-      await page.locator('button:has-text("count is")').click();
+      await page.locator(`button:has-text("${COUNTER_BUTTON_TEXT}")`).click();
       await img.waitFor({ state: "visible", timeout: 5000 });
       const before = await img.evaluate(
         (elm) => getComputedStyle(elm).borderColor,

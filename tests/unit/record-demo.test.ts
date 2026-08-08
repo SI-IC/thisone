@@ -170,8 +170,18 @@ describe("synthetic terminal", () => {
   });
 
   it("keeps the prompt and the pasted path inside one input block, not a separately labeled section", () => {
-    expect(SOURCE).toMatch(
-      /class="input">[\s\S]*prompt[\s\S]*path[\s\S]*<\/div>/,
+    expect(SOURCE).toContain(
+      '<div class="input"><span class="prompt">&gt; <span class="typed"></span></span><span class="path"></span></div>',
+    );
+  });
+
+  it("boundary: wraps the input text anywhere, so a long absolute checkout path can't overflow the fixed-width panel", () => {
+    expect(SOURCE).toMatch(/\.input\s*\{[^}]*overflow-wrap:\s*anywhere/);
+  });
+
+  it("empty: refuses to paste a blank path instead of silently sending an empty message", () => {
+    expect(SOURCE).toContain(
+      'throw new Error("terminal: .path was empty, nothing to paste")',
     );
   });
 
