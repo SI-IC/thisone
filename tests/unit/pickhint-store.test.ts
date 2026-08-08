@@ -1,3 +1,4 @@
+// Do not change, because without @vitest-environment happy-dom this file runs in a node environment with no localStorage
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   loadPickHintOffsetX,
