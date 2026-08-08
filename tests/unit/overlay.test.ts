@@ -651,4 +651,49 @@ describe("overlay", () => {
     expect(paddingInput().value).toBe("40");
     o2.destroy();
   });
+
+  it("switching screenshot to 'no' with a target already picked removes the Screenshot section", async () => {
+    const o = createOverlay();
+    const target = document.createElement("button");
+    document.body.appendChild(target);
+    o.open();
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+    expect(sectionTitles()).toEqual(["Path", "Screenshot"]);
+
+    screenshotRadio("no").click();
+    await tick();
+    expect(sectionTitles()).toEqual(["Path"]);
+    expect(shadow().querySelector("img.shot")).toBeNull();
+    expect(shadow().querySelector(".shot-loading")).toBeNull();
+    o.destroy();
+  });
+
+  it("changing padding with a target already picked re-captures with the new padding", async () => {
+    const o = createOverlay();
+    const target = document.createElement("button");
+    document.body.appendChild(target);
+    o.open();
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, composed: true }),
+    );
+    await tick();
+    expect(screenshot.captureElementScreenshot).toHaveBeenLastCalledWith(
+      target,
+      expect.anything(),
+      30,
+    );
+
+    paddingInput().value = "60";
+    paddingInput().dispatchEvent(new Event("change", { bubbles: true }));
+    await tick();
+    expect(screenshot.captureElementScreenshot).toHaveBeenLastCalledWith(
+      target,
+      expect.anything(),
+      60,
+    );
+    o.destroy();
+  });
 });
