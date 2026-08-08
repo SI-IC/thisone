@@ -418,8 +418,9 @@ describe("captureElementScreenshot padding parameter", () => {
     canvas.width = 1000;
     canvas.height = 1000;
     vi.spyOn(modernScreenshot, "domToCanvas").mockResolvedValue(canvas);
+    const drawImage = vi.fn();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-      drawImage: vi.fn(),
+      drawImage,
     } as any);
     vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(
       function (this: HTMLCanvasElement, cb: BlobCallback) {
@@ -436,9 +437,20 @@ describe("captureElementScreenshot padding parameter", () => {
       height: 50,
     } as DOMRect);
 
-    const blob = await captureElementScreenshot(el, null, 0);
+    await captureElementScreenshot(el, null, 0);
 
-    expect(blob).toBeInstanceOf(Blob);
+    // with padding 0 the crop must equal the element rect exactly:
+    expect(drawImage).toHaveBeenCalledWith(
+      canvas,
+      100,
+      100,
+      50,
+      50,
+      0,
+      0,
+      50,
+      50,
+    );
     vi.restoreAllMocks();
   });
 });
@@ -447,19 +459,7 @@ describe("captureElementScreenshot padding parameter", () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `pnpm vitest run tests/unit/screenshot.test.ts`
-Expected: FAIL — `captureElementScreenshot` currently only accepts 2 args; TS will still compile it (extra arg ignored at runtime pre-fix isn't the point) — the real failure is the assertion step below once we check the crop uses the right padding. To make the test meaningfully fail pre-fix, assert the crop width instead of just "isInstanceOf": change the assertion to `expect(blob.size).toBeGreaterThan(0)` is too weak — instead assert on the `drawImage` call args captured via a fresh spy return, requiring padding to reach `paddedCropRect`. Use this stronger version instead of the one above:
-
-```typescript
-const drawImage = vi.fn();
-vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-  drawImage,
-} as any);
-// ...call captureElementScreenshot(el, null, 0) as above...
-// with padding 0 the crop must equal the element rect exactly:
-expect(drawImage).toHaveBeenCalledWith(canvas, 100, 100, 50, 50, 0, 0, 50, 50);
-```
-
-Full corrected test replaces the body above; expected pre-fix failure: `drawImage` called with `80, 80, 90, 90, 0, 0, 90, 90` (padded by the hardcoded 30) instead of the expected `100, 100, 50, 50, ...`.
+Expected: FAIL — `captureElementScreenshot` currently ignores any third argument and always pads by the hardcoded `PADDING_PX` (30), so `drawImage` is called with `80, 80, 90, 90, 0, 0, 90, 90` instead of the expected `100, 100, 50, 50, 0, 0, 50, 50`.
 
 - [ ] **Step 3: Write minimal implementation**
 
