@@ -1741,7 +1741,7 @@
     );
     return out;
   }
-  async function captureElementScreenshot(el, excludeRoot) {
+  async function captureElementScreenshot(el, excludeRoot, padding = PADDING_PX) {
     const full = await domToCanvas(document.documentElement, {
       width: window.innerWidth,
       height: window.innerHeight,
@@ -1749,7 +1749,7 @@
       features: { restoreScrollPosition: true },
       filter: excludeRoot ? (node) => node !== excludeRoot : void 0
     });
-    const rect = paddedCropRect(el.getBoundingClientRect(), PADDING_PX, {
+    const rect = paddedCropRect(el.getBoundingClientRect(), padding, {
       width: full.width,
       height: full.height
     });

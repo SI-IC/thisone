@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-thisone",
-  "version": "1.2.16",
+  "version": "1.2.17",
   "description": "Point at any element in your Vite dev preview and hand your AI agent its exact source location and a screenshot.",
   "keywords": [
     "vite-plugin",

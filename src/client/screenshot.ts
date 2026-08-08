@@ -53,13 +53,15 @@ export function cropCanvas(
 }
 
 /**
- * Screenshot `el` with PADDING_PX of real surrounding page content, as a PNG blob.
+ * Screenshot `el` with `padding` of real surrounding page content, as a PNG blob.
  * @param excludeRoot - node (e.g. the picker overlay's shadow host) to omit
  * from the render along with its descendants.
+ * @param padding - padding in px around `el`, defaults to PADDING_PX.
  */
 export async function captureElementScreenshot(
   el: Element,
   excludeRoot?: Node | null,
+  padding: number = PADDING_PX,
 ): Promise<Blob> {
   const full = await domToCanvas(document.documentElement, {
     width: window.innerWidth,
@@ -68,7 +70,7 @@ export async function captureElementScreenshot(
     features: { restoreScrollPosition: true },
     filter: excludeRoot ? (node) => node !== excludeRoot : undefined,
   });
-  const rect = paddedCropRect(el.getBoundingClientRect(), PADDING_PX, {
+  const rect = paddedCropRect(el.getBoundingClientRect(), padding, {
     width: full.width,
     height: full.height,
   });

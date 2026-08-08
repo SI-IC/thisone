@@ -4,7 +4,11 @@ import {
   paddedCropRect,
   cropCanvas,
   PADDING_PX,
+  captureElementScreenshot,
 } from "../../src/client/screenshot";
+import * as modernScreenshot from "modern-screenshot";
+
+vi.mock("modern-screenshot", { spy: true });
 
 function rect(
   left: number,
@@ -96,6 +100,48 @@ describe("cropCanvas", () => {
 
     expect(out.width).toBe(1);
     expect(out.height).toBe(1);
+    vi.restoreAllMocks();
+  });
+});
+
+describe("captureElementScreenshot padding parameter", () => {
+  it("uses a custom padding instead of PADDING_PX when provided", async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1000;
+    canvas.height = 1000;
+    vi.spyOn(modernScreenshot, "domToCanvas").mockResolvedValue(canvas);
+    const drawImage = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
+      drawImage,
+    } as any);
+    vi.spyOn(HTMLCanvasElement.prototype, "toBlob").mockImplementation(
+      function (this: HTMLCanvasElement, cb: BlobCallback) {
+        cb(new Blob(["x"], { type: "image/png" }));
+      },
+    );
+    const el = document.createElement("div");
+    vi.spyOn(el, "getBoundingClientRect").mockReturnValue({
+      left: 100,
+      top: 100,
+      right: 150,
+      bottom: 150,
+      width: 50,
+      height: 50,
+    } as DOMRect);
+
+    await captureElementScreenshot(el, null, 0);
+
+    expect(drawImage).toHaveBeenCalledWith(
+      canvas,
+      100,
+      100,
+      50,
+      50,
+      0,
+      0,
+      50,
+      50,
+    );
     vi.restoreAllMocks();
   });
 });
