@@ -121,6 +121,41 @@ export async function centerOf(locator, label) {
 }
 
 /**
+ * Opens the picker, selects the demo button, and waits for its screenshot to render.
+ * @param ctx - shared page/glideTo/clickAt from recordDemo
+ */
+async function scenePickAndScreenshot(ctx) {
+  const { page, clickAt } = ctx;
+  await page.waitForTimeout(700);
+  await page.keyboard.press("Alt+KeyC");
+  await page.locator("#__thisone_root >> css=.panel").waitFor();
+  await page.evaluate((id) => window.__demoCursorReparent(id), OVERLAY_HOST_ID);
+  await page.waitForTimeout(500);
+
+  await clickAt(page.locator("button").first(), "demo button", 750, 700);
+
+  await page.locator("#__thisone_root >> css=img.shot").waitFor();
+  await page.waitForTimeout(700);
+}
+
+/**
+ * Clicks the path text to copy it, as the second half of the pick-and-copy demo.
+ * @param ctx - shared page/glideTo/clickAt from recordDemo
+ */
+async function sceneCopyPath(ctx) {
+  const { page, clickAt } = ctx;
+  await clickAt(
+    page.locator("#__thisone_root >> css=.path"),
+    ".path",
+    700,
+    400,
+  );
+  await page.waitForTimeout(1500);
+}
+
+const SCENES = [scenePickAndScreenshot, sceneCopyPath];
+
+/**
  * Drives the Vue demo app through a pick-and-copy run and writes docs/demo.gif.
  * @param rawPort - port the demo dev server listens on
  * @returns path of the written gif
@@ -158,6 +193,10 @@ export async function recordDemo(rawPort) {
     }, PANEL_POS);
     await page.addInitScript(installCursor, CURSOR_HOST_ID);
     await page.goto(`http://localhost:${port}/`, { waitUntil: "networkidle" });
+    // Не менять, потому что .demo-header — это навигация между examples/demo-app-*, а не часть демонстрируемого продукта
+    await page.addStyleTag({
+      content: ".demo-header { display: none !important; }",
+    });
     await page.waitForTimeout(500);
 
     let cursor = START_POINT;
@@ -186,27 +225,9 @@ export async function recordDemo(rawPort) {
     capturing = true;
     const loop = captureLoop(page);
 
+    const ctx = { page, glideTo, clickAt };
     try {
-      await page.waitForTimeout(700);
-      await page.keyboard.press("Alt+KeyC");
-      await page.locator("#__thisone_root >> css=.panel").waitFor();
-      await page.evaluate(
-        (id) => window.__demoCursorReparent(id),
-        OVERLAY_HOST_ID,
-      );
-      await page.waitForTimeout(500);
-
-      await clickAt(page.locator("button").first(), "demo button", 750, 700);
-
-      await page.locator("#__thisone_root >> css=img.shot").waitFor();
-      await page.waitForTimeout(700);
-      await clickAt(
-        page.locator("#__thisone_root >> css=.path"),
-        ".path",
-        700,
-        400,
-      );
-      await page.waitForTimeout(1500);
+      for (const scene of SCENES) await scene(ctx);
     } finally {
       capturing = false;
       await loop;
@@ -217,6 +238,19 @@ export async function recordDemo(rawPort) {
   }
 
   if (frames.length === 0) throw new Error("record-demo: no frames captured");
+
+  if (process.env.THISONE_DEMO_DEBUG_FRAMES) {
+    const n = frames.length;
+    for (const i of [
+      0,
+      Math.floor(n / 4),
+      Math.floor(n / 2),
+      Math.floor((3 * n) / 4),
+      n - 1,
+    ]) {
+      writeFileSync(`/tmp/demo-frame-${i}.png`, frames[i]);
+    }
+  }
 
   const out = resolve(root, "docs/demo.gif");
   mkdirSync(dirname(out), { recursive: true });

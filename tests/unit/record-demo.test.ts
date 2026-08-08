@@ -151,4 +151,17 @@ describe("record-demo browser lifecycle", () => {
     expect(SOURCE).toContain('permissions: ["clipboard-write"]');
     expect(SOURCE).not.toContain("clipboard-read");
   });
+
+  it("hides the examples demo-hub nav before capturing, so it never leaks into the gif", () => {
+    expect(SOURCE).toContain(".demo-header { display: none !important; }");
+  });
+});
+
+describe("record-demo scenes", () => {
+  it("runs every scene in order inside the capture loop's try block", () => {
+    expect(SOURCE).toMatch(
+      /const SCENES = \[scenePickAndScreenshot, sceneCopyPath\];/,
+    );
+    expect(SOURCE).toMatch(/for \(const scene of SCENES\) await scene\(ctx\);/);
+  });
 });
