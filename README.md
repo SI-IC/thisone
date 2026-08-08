@@ -67,6 +67,31 @@ export default defineConfig({
 });
 ```
 
+Svelte:
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
+import thisone from "vite-plugin-thisone";
+
+export default defineConfig({
+  plugins: [svelte(), thisone()],
+});
+```
+
+Preact — no framework plugin required:
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite";
+import thisone from "vite-plugin-thisone";
+
+export default defineConfig({
+  plugins: [thisone()],
+});
+```
+
 Start your dev server and press **Alt+C**.
 
 ## What lands on your clipboard
@@ -118,6 +143,10 @@ remembered and clamped to stay inside the viewport.
 - **Vue 3** — component name and source span via the SFC compiler.
 - **React** — `.jsx` / `.tsx`, including `memo()`-wrapped and default-exported components. No
   dependency on `@vitejs/plugin-react`, and verified compatible when it's installed too.
+- **Preact** — function components via the `options.diffed` hook, including `memo()`-wrapped
+  (`preact/compat`). No framework Vite plugin required.
+- **Svelte** — components via the `__svelte_meta` dev-stack chain, verified with
+  `@sveltejs/vite-plugin-svelte`.
 - **Vite 5, 6, 7.**
 
 The plugin declares `apply: "serve"`. `vite build` output contains none of it — no overlay, no
@@ -147,10 +176,13 @@ your clipboard. That is the whole data flow.
 pnpm install
 pnpm run setup-hooks   # one-time: installs the husky git hooks
 pnpm build             # -> dist/{index.js, client.js, index.d.ts}
+pnpm build:watch       # rebuilds dist/client.js on save, for live overlay dev
 pnpm test:run                 # unit tests
 bash scripts/e2e.sh               # e2e against examples/demo-app (Vue)
 bash scripts/e2e-react.sh         # e2e against examples/demo-app-react (bare, no @vitejs/plugin-react)
 bash scripts/e2e-react-plugin.sh  # e2e against examples/demo-app-react-plugin (with @vitejs/plugin-react)
+bash scripts/e2e-preact.sh        # e2e against examples/demo-app-preact
+bash scripts/e2e-svelte.sh        # e2e against examples/demo-app-svelte
 bash scripts/demo.sh              # re-record docs/demo.gif
 bash scripts/dev-demo.sh          # browse both demos live on one port — see tests/e2e/README.md
 ```
@@ -171,8 +203,8 @@ Design notes live in `docs/superpowers/specs/`.
 
 ## Contributing
 
-Issues and pull requests are welcome. Before opening a PR, run `pnpm test:run`, `bash scripts/e2e.sh`,
-`bash scripts/e2e-react.sh` and `bash scripts/e2e-react-plugin.sh` — all four must be green. Bug
+Issues and pull requests are welcome. Before opening a PR, run `pnpm test:run` and all `scripts/e2e*.sh`
+scripts (Vue, React bare, React with `@vitejs/plugin-react`, Preact, Svelte) — all must be green. Bug
 reports are most useful with the framework, the Vite version, and the copied path text the panel
 produced.
 
