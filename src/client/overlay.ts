@@ -202,7 +202,7 @@ export function createOverlay(): Overlay {
     panel = el("div", "panel hidden");
     header = el("div", "header");
     const title = el("span", "title");
-    title.textContent = "Select an element";
+    title.textContent = "ThisOne";
     targetToggle = el("button", "target-toggle");
     targetToggle.innerHTML = pinIcon(14);
     targetToggle.title = "Show quick-access button at the screen edge";

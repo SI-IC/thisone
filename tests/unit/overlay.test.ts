@@ -53,6 +53,13 @@ describe("overlay", () => {
     o.destroy();
   });
 
+  it("shows ThisOne as the panel title", () => {
+    const o = createOverlay();
+    o.open();
+    expect(shadow().querySelector(".title")?.textContent).toBe("ThisOne");
+    o.destroy();
+  });
+
   it("shows the empty-state hint before anything is picked", () => {
     const o = createOverlay();
     o.open();
