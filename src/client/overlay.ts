@@ -140,8 +140,15 @@ const STYLE = `
   outline: none;
 }
 .shot-loading {
-  color: #a6adc8;
   margin-top: 8px;
+  width: 22px; height: 22px;
+  border: 2px solid #45475a;
+  border-top-color: #89b4fa;
+  border-radius: 50%;
+  animation: shot-spin 0.7s linear infinite;
+}
+@keyframes shot-spin {
+  to { transform: rotate(360deg); }
 }
 .radio-row {
   display: flex;
@@ -174,7 +181,7 @@ const STYLE = `
   flex-shrink: 0;
 }
 img.shot {
-  display: block; max-width: 100%; margin-top: 8px; cursor: pointer;
+  display: block; max-width: 100%; max-height: 60vh; margin-top: 8px; cursor: pointer;
   border: 1px solid #45475a; border-radius: 6px;
 }
 img.shot:hover { border-color: #89b4fa; }
@@ -531,7 +538,8 @@ export function createOverlay(): Overlay {
     const shotTitle = el("div", "section-title");
     shotTitle.textContent = "Screenshot";
     const loading = el("div", "shot-loading");
-    loading.textContent = "Taking screenshot";
+    loading.setAttribute("role", "status");
+    loading.setAttribute("aria-label", "Taking screenshot");
     const imgStatus = el("div", "status");
     body.append(shotTitle, loading);
 
