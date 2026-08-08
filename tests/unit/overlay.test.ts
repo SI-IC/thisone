@@ -19,6 +19,12 @@ function img() {
 function pathModeToggle() {
   return shadow().querySelector(".path-mode-toggle") as HTMLElement;
 }
+function settingsHeader() {
+  return shadow().querySelector(".settings-header") as HTMLElement;
+}
+function settingsBody() {
+  return shadow().querySelector(".settings-body") as HTMLElement;
+}
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
@@ -487,5 +493,31 @@ describe("overlay", () => {
     await tick();
     expect(pathModeToggle().classList.contains("active")).toBe(true);
     o2.destroy();
+  });
+
+  it("Settings panel starts collapsed and expands on click, persisting the state", () => {
+    const o = createOverlay();
+    o.open();
+    expect(settingsBody().classList.contains("hidden")).toBe(true);
+
+    settingsHeader().click();
+    expect(settingsBody().classList.contains("hidden")).toBe(false);
+    expect(localStorage.getItem("thisone:settings-expanded")).toBe("1");
+    o.destroy();
+
+    const o2 = createOverlay();
+    o2.open();
+    expect(settingsBody().classList.contains("hidden")).toBe(false);
+    o2.destroy();
+  });
+
+  it("the Settings panel sits between the header and the body", () => {
+    const o = createOverlay();
+    o.open();
+    const children = Array.from(panel().children).map(
+      (c) => c.className.split(" ")[0],
+    );
+    expect(children).toEqual(["header", "settings", "body"]);
+    o.destroy();
   });
 });

@@ -15,6 +15,7 @@ import {
   type TargetPosition,
 } from "./target-store";
 import { loadPathMode, savePathMode, type PathMode } from "./path-mode-store";
+import { loadSettingsExpanded, saveSettingsExpanded } from "./settings-store";
 
 export const HOST_ID = "__thisone_root";
 
@@ -54,6 +55,35 @@ const STYLE = `
 .target-toggle.active { color: #89b4fa; border-color: #89b4fa; background: rgba(137,180,250,.12); }
 .target-toggle.active:hover { background: #313244; }
 .body { padding: 12px; }
+.settings {
+  border-bottom: 1px solid #313244;
+  font-size: 11px;
+}
+.settings-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  color: #a6adc8;
+  user-select: none;
+}
+.settings-header:hover {
+  color: #eee;
+}
+.settings-arrow {
+  display: inline-flex;
+  transition: transform 0.1s;
+}
+.settings-arrow.expanded {
+  transform: rotate(90deg);
+}
+.settings-body {
+  padding: 0 10px 8px;
+}
+.settings-body.hidden {
+  display: none !important;
+}
 .hint { color: #a6adc8; }
 .path-row { display: flex; align-items: center; gap: 6px; }
 .path {
@@ -218,7 +248,27 @@ export function createOverlay(): Overlay {
 
     body = el("div", "body");
 
-    panel.append(header, body);
+    const settings = el("div", "settings");
+    const settingsHeader = el("div", "settings-header");
+    const settingsArrow = el("span", "settings-arrow");
+    settingsArrow.textContent = "▸";
+    const settingsLabel = el("span");
+    settingsLabel.textContent = "Settings";
+    settingsHeader.append(settingsArrow, settingsLabel);
+    const settingsBody = el("div", "settings-body");
+    settings.append(settingsHeader, settingsBody);
+
+    const settingsExpanded = loadSettingsExpanded();
+    settingsBody.classList.toggle("hidden", !settingsExpanded);
+    settingsArrow.classList.toggle("expanded", settingsExpanded);
+    settingsHeader.addEventListener("click", () => {
+      const expanded = settingsBody.classList.contains("hidden");
+      settingsBody.classList.toggle("hidden", !expanded);
+      settingsArrow.classList.toggle("expanded", expanded);
+      saveSettingsExpanded(expanded);
+    });
+
+    panel.append(header, settings, body);
     root.appendChild(panel);
 
     pickHint = el("div", "pickhint hidden");
