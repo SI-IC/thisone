@@ -1,9 +1,14 @@
 {
-  "name": "vite-plugin-thisone",
-  "version": "1.5.10",
-  "description": "Point at any element in your Vite dev preview and hand your AI agent its exact source location and a screenshot.",
+  "name": "@si-ic/thisone",
+  "version": "2.0.0",
+  "description": "Point at any element in your dev preview and hand your AI agent its exact source location and a screenshot. Vite, webpack, Rspack, Rollup, esbuild.",
   "keywords": [
     "vite-plugin",
+    "webpack-plugin",
+    "rspack",
+    "rollup-plugin",
+    "esbuild-plugin",
+    "unplugin",
     "ai",
     "agent",
     "llm",
@@ -25,16 +30,24 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./vite": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
     "./webpack": {
+      "types": "./dist/webpack.d.ts",
       "import": "./dist/webpack.js"
     },
     "./rspack": {
+      "types": "./dist/rspack.d.ts",
       "import": "./dist/rspack.js"
     },
     "./rollup": {
+      "types": "./dist/rollup.d.ts",
       "import": "./dist/rollup.js"
     },
     "./esbuild": {
+      "types": "./dist/esbuild.d.ts",
       "import": "./dist/esbuild.js"
     }
   },
@@ -53,7 +66,28 @@
     "setup-hooks": "husky"
   },
   "peerDependencies": {
-    "vite": ">=5"
+    "vite": ">=5",
+    "webpack": ">=5",
+    "@rspack/core": ">=1",
+    "rollup": ">=4",
+    "esbuild": ">=0.20"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    },
+    "webpack": {
+      "optional": true
+    },
+    "@rspack/core": {
+      "optional": true
+    },
+    "rollup": {
+      "optional": true
+    },
+    "esbuild": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@babel/core": "^8.0.1",
@@ -71,6 +105,7 @@
     "playwright": "^1.62.1",
     "pngjs": "7.0.0",
     "prettier": "^3.9.6",
+    "rollup": "^4.62.4",
     "typescript": "5.9.3",
     "vite": "7.3.1",
     "vitest": "4.0.18",

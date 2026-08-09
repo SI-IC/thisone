@@ -1,14 +1,3 @@
-#!/usr/bin/env node
-// Build the two artifacts that downstream phases depend on:
-//   dist/index.js    — Vite plugin, ESM, platform node
-//   dist/client.js   — browser overlay bundle, IIFE, inlined into dev HTML
-//   dist/index.d.ts  — plugin type declarations (via tsc)
-//
-// NOTE: the plan named `tsup`, but `tsup` is not available in this environment's
-// offline package store while `esbuild` + `typescript` are. esbuild (bundle) + tsc
-// (declarations) produce the identical build contract, so the substitution is
-// transparent to every later phase (`pnpm build` -> dist/{index.js,index.d.ts,client.js}).
-
 import { build } from "esbuild";
 import { execFileSync } from "node:child_process";
 import {
@@ -28,75 +17,38 @@ import {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const dist = resolve(root, "dist");
 
+const ENTRIES = [
+  { name: "vite", outName: "index", external: [] },
+  { name: "webpack", outName: "webpack", external: [] },
+  { name: "rspack", outName: "rspack", external: ["@rspack/core"] },
+  { name: "rollup", outName: "rollup", external: ["rollup"] },
+  { name: "esbuild", outName: "esbuild", external: ["esbuild"] },
+];
+
 export async function main() {
   rmSync(dist, { recursive: true, force: true });
   mkdirSync(dist, { recursive: true });
 
-  // (a) Vite plugin — ESM for Node. Node builtins stay external automatically;
-  await build({
-    entryPoints: [resolve(root, "src/plugin/index.ts")],
-    outfile: resolve(dist, "index.js"),
-    bundle: true,
-    format: "esm",
-    platform: "node",
-    target: "node18",
-    sourcemap: false,
-    // Do not change, because bundling @vue/compiler-sfc breaks on its optional template-engine require() calls.
-    external: PLUGIN_BUNDLE_EXTERNAL,
-  });
+  for (const entry of ENTRIES) {
+    await build({
+      entryPoints: [resolve(root, `src/entries/${entry.name}.ts`)],
+      outfile: resolve(dist, `${entry.outName}.js`),
+      bundle: true,
+      format: "esm",
+      platform: "node",
+      target: "node18",
+      sourcemap: false,
+      // Do not change, because bundling @vue/compiler-sfc breaks on its optional template-engine require() calls.
+      external: [...PLUGIN_BUNDLE_EXTERNAL, ...entry.external],
+    });
+  }
 
-  await build({
-    entryPoints: [resolve(root, "src/entries/webpack.ts")],
-    outfile: resolve(dist, "webpack.js"),
-    bundle: true,
-    format: "esm",
-    platform: "node",
-    target: "node18",
-    sourcemap: false,
-    external: PLUGIN_BUNDLE_EXTERNAL,
-  });
-
-  await build({
-    entryPoints: [resolve(root, "src/entries/rspack.ts")],
-    outfile: resolve(dist, "rspack.js"),
-    bundle: true,
-    format: "esm",
-    platform: "node",
-    target: "node18",
-    sourcemap: false,
-    external: [...PLUGIN_BUNDLE_EXTERNAL, "@rspack/core"],
-  });
-
-  await build({
-    entryPoints: [resolve(root, "src/entries/rollup.ts")],
-    outfile: resolve(dist, "rollup.js"),
-    bundle: true,
-    format: "esm",
-    platform: "node",
-    target: "node18",
-    sourcemap: false,
-    external: [...PLUGIN_BUNDLE_EXTERNAL, "rollup"],
-  });
-
-  await build({
-    entryPoints: [resolve(root, "src/entries/esbuild.ts")],
-    outfile: resolve(dist, "esbuild.js"),
-    bundle: true,
-    format: "esm",
-    platform: "node",
-    target: "node18",
-    sourcemap: false,
-    external: [...PLUGIN_BUNDLE_EXTERNAL, "esbuild"],
-  });
-
-  // (b) Client overlay — single IIFE bundle inlined into dev pages.
   await build({
     entryPoints: [resolve(root, "src/client/index.ts")],
     outfile: resolve(dist, "client.js"),
     ...CLIENT_BUILD_OPTIONS,
   });
 
-  // Do not change, because tsconfig.dts.json include=["src/plugin/index.ts"] -> tsc emits only dist/plugin/index.d.ts, which the relocation below expects
   execFileSync(
     process.execPath,
     [
@@ -107,14 +59,24 @@ export async function main() {
     { stdio: "inherit", cwd: root },
   );
 
-  const emitted = resolve(dist, "plugin/index.d.ts");
-  if (!existsSync(emitted)) {
-    throw new Error("dts emit missing expected dist/plugin/index.d.ts");
+  for (const entry of ENTRIES) {
+    const emitted = resolve(dist, `entries/${entry.name}.d.ts`);
+    if (!existsSync(emitted)) {
+      throw new Error(
+        `dts emit missing expected dist/entries/${entry.name}.d.ts`,
+      );
+    }
+    renameSync(emitted, resolve(dist, `${entry.outName}.d.ts`));
   }
-  renameSync(emitted, resolve(dist, "index.d.ts"));
+  rmSync(resolve(dist, "entries"), { recursive: true, force: true });
+  rmSync(resolve(dist, "core"), { recursive: true, force: true });
   rmSync(resolve(dist, "plugin"), { recursive: true, force: true });
 
-  console.log("build ok: dist/{index.js,client.js,index.d.ts}");
+  console.log(
+    "build ok: dist/{" +
+      ENTRIES.map((e) => `${e.outName}.js`).join(",") +
+      ",client.js}",
+  );
 }
 
 export function isMainModule(moduleUrl, argvPath) {

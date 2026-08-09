@@ -35,7 +35,7 @@ export default defineConfig({
   resolve: {
     conditions: ["browser"],
     alias: {
-      "vite-plugin-thisone": new URL("src/plugin/index.ts", import.meta.url)
+      "@si-ic/thisone/vite": new URL("src/entries/vite.ts", import.meta.url)
         .pathname,
     },
   },

@@ -39600,7 +39600,8 @@ function thisone(options = {}) {
     }
   };
 }
+var vite_default = thisone;
 export {
-  thisone as default,
+  vite_default as default,
   thisone
 };

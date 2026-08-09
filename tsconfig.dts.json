@@ -7,5 +7,11 @@
     "rootDir": "src",
     "outDir": "dist"
   },
-  "include": ["src/plugin/index.ts"]
+  "include": [
+    "src/entries/vite.ts",
+    "src/entries/webpack.ts",
+    "src/entries/rspack.ts",
+    "src/entries/rollup.ts",
+    "src/entries/esbuild.ts"
+  ]
 }

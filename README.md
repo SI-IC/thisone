@@ -2,8 +2,8 @@
 
 **Point at it. Your AI agent gets the file, the line, and the pixels.**
 
-[![npm](https://img.shields.io/npm/v/vite-plugin-thisone.svg)](https://www.npmjs.com/package/vite-plugin-thisone)
-[![license](https://img.shields.io/npm/l/vite-plugin-thisone.svg)](./LICENSE)
+[![npm](https://img.shields.io/npm/v/@si-ic/thisone.svg)](https://www.npmjs.com/package/@si-ic/thisone)
+[![license](https://img.shields.io/npm/l/@si-ic/thisone.svg)](./LICENSE)
 
 `dev-only` · `zero runtime` · `no network`
 
@@ -38,7 +38,7 @@ than reading about it.
 ## Quickstart
 
 ```bash
-npm i -D vite-plugin-thisone
+npm i -D @si-ic/thisone
 ```
 
 Vue:
@@ -47,7 +47,7 @@ Vue:
 // vite.config.ts
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import thisone from "vite-plugin-thisone";
+import thisone from "@si-ic/thisone/vite";
 
 export default defineConfig({
   plugins: [vue(), thisone()],
@@ -60,7 +60,7 @@ React:
 // vite.config.ts
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import thisone from "vite-plugin-thisone";
+import thisone from "@si-ic/thisone/vite";
 
 export default defineConfig({
   plugins: [react(), thisone()],
@@ -73,7 +73,7 @@ Svelte:
 // vite.config.ts
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import thisone from "vite-plugin-thisone";
+import thisone from "@si-ic/thisone/vite";
 
 export default defineConfig({
   plugins: [svelte(), thisone()],
@@ -85,12 +85,21 @@ Preact — no framework plugin required:
 ```ts
 // vite.config.ts
 import { defineConfig } from "vite";
-import thisone from "vite-plugin-thisone";
+import thisone from "@si-ic/thisone/vite";
 
 export default defineConfig({
   plugins: [thisone()],
 });
 ```
+
+Using webpack, Rspack, Rollup, or esbuild instead of Vite? Swap the import for
+`@si-ic/thisone/webpack`, `@si-ic/thisone/rspack`, `@si-ic/thisone/rollup`, or
+`@si-ic/thisone/esbuild` — same plugin, same clipboard payload. (Rollup and esbuild don't own an
+HTML pipeline, so those two entries inject the client script as a JS banner into your entry chunk
+instead of a `<script>` tag — no extra setup either way.)
+
+Already on `vite-plugin-thisone`? It still works — that package now re-exports
+`@si-ic/thisone/vite` unchanged.
 
 Start your dev server and press **Alt+C**.
 
@@ -147,10 +156,13 @@ remembered and clamped to stay inside the viewport.
   (`preact/compat`). No framework Vite plugin required.
 - **Svelte** — components via the `__svelte_meta` dev-stack chain, verified with
   `@sveltejs/vite-plugin-svelte`.
-- **Vite 5, 6, 7.**
+- **Vite 5, 6, 7** — HTML-pipeline injection via `transformIndexHtml`.
+- **webpack 5, Rspack** — HTML-pipeline injection via `html-webpack-plugin` (webpack) or the
+  built-in `HtmlRspackPlugin` (Rspack).
+- **Rollup, esbuild** — JS-banner injection into the entry chunk (no HTML pipeline to hook into).
 
-The plugin declares `apply: "serve"`. `vite build` output contains none of it — no overlay, no
-injected attributes, no bytes shipped to your users.
+Every entry is dev-only. A production build contains none of it — no overlay, no injected
+attributes, no bytes shipped to your users.
 
 ## Why not just…?
 
@@ -175,7 +187,7 @@ your clipboard. That is the whole data flow.
 ```bash
 pnpm install
 pnpm run setup-hooks   # one-time: installs the husky git hooks
-pnpm build             # -> dist/{index.js, client.js, index.d.ts}
+pnpm build             # -> dist/{index,webpack,rspack,rollup,esbuild}.{js,d.ts}, dist/client.js
 pnpm build:watch       # rebuilds dist/client.js on save, for live overlay dev
 pnpm test:run                 # unit tests
 bash scripts/e2e.sh               # e2e against examples/demo-app (Vue)
@@ -183,6 +195,7 @@ bash scripts/e2e-react.sh         # e2e against examples/demo-app-react (bare, n
 bash scripts/e2e-react-plugin.sh  # e2e against examples/demo-app-react-plugin (with @vitejs/plugin-react)
 bash scripts/e2e-preact.sh        # e2e against examples/demo-app-preact
 bash scripts/e2e-svelte.sh        # e2e against examples/demo-app-svelte
+bash scripts/e2e-webpack.sh       # e2e against examples/demo-app-react-webpack
 bash scripts/demo.sh              # re-record docs/demo.gif
 bash scripts/dev-demo.sh          # browse both demos live on one port — see tests/e2e/README.md
 ```
