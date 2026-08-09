@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-thisone",
-  "version": "1.5.8",
+  "version": "1.5.9",
   "description": "Point at any element in your Vite dev preview and hand your AI agent its exact source location and a screenshot.",
   "keywords": [
     "vite-plugin",
@@ -27,6 +27,9 @@
     },
     "./webpack": {
       "import": "./dist/webpack.js"
+    },
+    "./rspack": {
+      "import": "./dist/rspack.js"
     }
   },
   "main": "./dist/index.js",
@@ -49,6 +52,7 @@
   "devDependencies": {
     "@babel/core": "^8.0.1",
     "@babel/preset-react": "^8.0.1",
+    "@rspack/core": "^2.1.8",
     "@types/node": "24.12.2",
     "@types/pngjs": "^6.0.5",
     "@vitejs/plugin-vue": "6.0.3",
