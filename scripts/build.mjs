@@ -67,6 +67,28 @@ export async function main() {
     external: [...PLUGIN_BUNDLE_EXTERNAL, "@rspack/core"],
   });
 
+  await build({
+    entryPoints: [resolve(root, "src/entries/rollup.ts")],
+    outfile: resolve(dist, "rollup.js"),
+    bundle: true,
+    format: "esm",
+    platform: "node",
+    target: "node18",
+    sourcemap: false,
+    external: [...PLUGIN_BUNDLE_EXTERNAL, "rollup"],
+  });
+
+  await build({
+    entryPoints: [resolve(root, "src/entries/esbuild.ts")],
+    outfile: resolve(dist, "esbuild.js"),
+    bundle: true,
+    format: "esm",
+    platform: "node",
+    target: "node18",
+    sourcemap: false,
+    external: [...PLUGIN_BUNDLE_EXTERNAL, "esbuild"],
+  });
+
   // (b) Client overlay — single IIFE bundle inlined into dev pages.
   await build({
     entryPoints: [resolve(root, "src/client/index.ts")],
