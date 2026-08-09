@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-thisone",
-  "version": "1.5.5",
+  "version": "1.5.6",
   "description": "Point at any element in your Vite dev preview and hand your AI agent its exact source location and a screenshot.",
   "keywords": [
     "vite-plugin",
@@ -67,6 +67,7 @@
     "@vue/compiler-core": "^3.5.41",
     "@vue/compiler-sfc": "^3.5.41",
     "modern-screenshot": "^4.7.0",
-    "svelte": "^5.56.8"
+    "svelte": "^5.56.8",
+    "unplugin": "^3.3.0"
   }
 }
