@@ -1,0 +1,23 @@
+{
+  "name": "demo-app-react-webpack",
+  "private": true,
+  "version": "0.0.0",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "webpack serve --mode development"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^8.0.1",
+    "@babel/preset-react": "^8.0.1",
+    "babel-loader": "^10.1.1",
+    "html-webpack-plugin": "^5.6.8",
+    "vite-plugin-thisone": "link:../..",
+    "webpack": "^5.109.2",
+    "webpack-cli": "^7.2.2",
+    "webpack-dev-server": "^6.0.0"
+  }
+}

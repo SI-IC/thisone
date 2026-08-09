@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-thisone",
-  "version": "1.5.7",
+  "version": "1.5.8",
   "description": "Point at any element in your Vite dev preview and hand your AI agent its exact source location and a screenshot.",
   "keywords": [
     "vite-plugin",
@@ -24,6 +24,9 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./webpack": {
+      "import": "./dist/webpack.js"
     }
   },
   "main": "./dist/index.js",
@@ -44,19 +47,27 @@
     "vite": ">=5"
   },
   "devDependencies": {
+    "@babel/core": "^8.0.1",
+    "@babel/preset-react": "^8.0.1",
     "@types/node": "24.12.2",
     "@types/pngjs": "^6.0.5",
     "@vitejs/plugin-vue": "6.0.3",
+    "babel-loader": "^10.1.1",
     "esbuild": "0.27.2",
     "gifenc": "1.0.3",
     "happy-dom": "20.6.1",
+    "html-webpack-plugin": "^5.6.8",
     "husky": "9.1.7",
     "playwright": "^1.62.1",
     "pngjs": "7.0.0",
     "prettier": "^3.9.6",
     "typescript": "5.9.3",
     "vite": "7.3.1",
-    "vitest": "4.0.18"
+    "vitest": "4.0.18",
+    "webpack": "^5.109.2",
+    "webpack-cli": "^7.2.2",
+    "webpack-dev-server": "^6.0.0",
+    "webpack-virtual-modules": "^0.6.2"
   },
   "packageManager": "pnpm@10.33.0",
   "dependencies": {

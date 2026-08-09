@@ -45,6 +45,17 @@ export async function main() {
     external: PLUGIN_BUNDLE_EXTERNAL,
   });
 
+  await build({
+    entryPoints: [resolve(root, "src/entries/webpack.ts")],
+    outfile: resolve(dist, "webpack.js"),
+    bundle: true,
+    format: "esm",
+    platform: "node",
+    target: "node18",
+    sourcemap: false,
+    external: PLUGIN_BUNDLE_EXTERNAL,
+  });
+
   // (b) Client overlay — single IIFE bundle inlined into dev pages.
   await build({
     entryPoints: [resolve(root, "src/client/index.ts")],

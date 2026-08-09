@@ -1,5 +1,7 @@
 export const PLUGIN_BUNDLE_EXTERNAL = [
   "vite",
+  "webpack",
+  "unplugin",
   "@vue/compiler-sfc",
   "@vue/compiler-core",
   "svelte",

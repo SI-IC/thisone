@@ -39569,38 +39569,55 @@ var thisonePlugin = createUnplugin(
   }
 );
 
-// src/entries/vite.ts
-function thisone(options = {}) {
+// src/entries/webpack.ts
+var PLUGIN_NAME = "thisone-webpack";
+function renderTags(hotkey, hasPreact) {
+  return buildInjectionTags(hotkey, hasPreact).map((t) => {
+    const attrs = t.attrs ? " " + Object.entries(t.attrs).map(([k, v]) => `${k}="${v}"`).join(" ") : "";
+    return `<${t.tag}${attrs}>${t.children}</${t.tag}>`;
+  }).join("\n");
+}
+function findHtmlWebpackPluginCtor(compiler) {
+  const instance = (compiler.options.plugins ?? []).find(
+    (p) => p?.constructor?.name === "HtmlWebpackPlugin"
+  );
+  return instance?.constructor;
+}
+function thisoneWebpack(options = {}) {
   const hotkey = options.hotkey ?? "KeyC";
-  let isBuild = false;
-  let hasPreact = false;
-  const base = thisonePlugin.vite(options);
+  const base = thisonePlugin.webpack(options);
   return {
-    ...base,
-    name: "vite-plugin-thisone",
-    apply: "serve",
-    config(_config, env) {
-      isBuild = env.command === "build";
-    },
-    configResolved(resolvedConfig) {
-      hasPreact = detectPreact(resolvedConfig.root);
-    },
-    transform(code2, id) {
-      if (isBuild) return;
-      const raw = base.transform;
-      const handler = typeof raw === "function" ? raw : raw?.handler;
-      return handler?.call(this, code2, id);
-    },
-    transformIndexHtml: {
-      order: "pre",
-      handler(html) {
-        if (isBuild) return html;
-        return { html, tags: buildInjectionTags(hotkey, hasPreact) };
+    apply(compiler) {
+      base.apply(compiler);
+      if (compiler.options.mode === "production") return;
+      const hasPreact = detectPreact(compiler.context);
+      const HtmlWebpackPluginCtor = findHtmlWebpackPluginCtor(compiler);
+      if (!HtmlWebpackPluginCtor?.getHooks) {
+        compiler.hooks.done.tap(PLUGIN_NAME, () => {
+          console.warn(
+            "[thisone] no html-webpack-plugin detected \u2014 skipping automatic client injection."
+          );
+        });
+        return;
       }
+      compiler.hooks.compilation.tap(PLUGIN_NAME, (compilation) => {
+        HtmlWebpackPluginCtor.getHooks(compilation).beforeEmit.tapAsync(
+          PLUGIN_NAME,
+          (data, cb) => {
+            data.html = data.html.replace(
+              "</body>",
+              `${renderTags(hotkey, hasPreact)}
+</body>`
+            );
+            cb(null, data);
+          }
+        );
+      });
     }
   };
 }
+var webpack_default = thisoneWebpack;
 export {
-  thisone as default,
-  thisone
+  webpack_default as default,
+  thisoneWebpack
 };

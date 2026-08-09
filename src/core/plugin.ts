@@ -103,6 +103,10 @@ export const thisonePlugin = createUnplugin<ThisoneOptions | undefined>(
         if (id === PREACT_HOOK_VIRTUAL_ID) return PREACT_HOOK_RESOLVED_ID;
       },
 
+      loadInclude(id) {
+        return id === PREACT_HOOK_RESOLVED_ID;
+      },
+
       load(id) {
         if (id === PREACT_HOOK_RESOLVED_ID) return PREACT_HOOK_SOURCE;
       },
