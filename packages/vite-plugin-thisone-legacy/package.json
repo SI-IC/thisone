@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-thisone",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "Legacy alias — use @si-ic/thisone instead. Re-exports @si-ic/thisone/vite.",
   "type": "module",
   "license": "MIT",
