@@ -232,18 +232,35 @@
       sourceLoc: parseSourceLoc(el.getAttribute("data-src-loc"))
     };
   }
+  function formatSourceLoc(l) {
+    return `${l.file}:${l.startLine}:${l.startColumn}-${l.endLine}:${l.endColumn}`;
+  }
   function formatElementPath(el) {
     const d = describeElement(el);
     const c = resolveComponent(el);
     const tag = `<${d.tag}>`;
     if (!c) return `${tag} \xB7 ${d.selector}`;
     if (d.sourceLoc) {
-      const l = d.sourceLoc;
-      return `${tag} \xB7 ${c.name} \xB7 ${l.file}:${l.startLine}:${l.startColumn}-${l.endLine}:${l.endColumn}`;
+      return `${tag} \xB7 ${c.name} \xB7 ${formatSourceLoc(d.sourceLoc)}`;
     }
     return c.file ? `${tag} \xB7 ${c.name} (${c.file})` : `${tag} \xB7 ${c.name}`;
   }
-  function collapseConsecutive(entries) {
+  function namesBackedByMultipleFiles(entries) {
+    var _a2;
+    const filesByName = /* @__PURE__ */ new Map();
+    for (const entry of entries) {
+      const files = (_a2 = filesByName.get(entry.name)) != null ? _a2 : /* @__PURE__ */ new Set();
+      files.add(entry.file);
+      filesByName.set(entry.name, files);
+    }
+    const ambiguous = /* @__PURE__ */ new Set();
+    for (const [name, files] of filesByName) {
+      if (files.size > 1) ambiguous.add(name);
+    }
+    return ambiguous;
+  }
+  function chainLabels(entries) {
+    const ambiguous = namesBackedByMultipleFiles(entries);
     const labels = [];
     let i = 0;
     while (i < entries.length) {
@@ -253,7 +270,9 @@
         count++;
       }
       const name = count > 1 ? `${entry.name} \xD7${count}` : entry.name;
-      labels.push(entry.file ? `${name} (${entry.file})` : name);
+      labels.push(
+        ambiguous.has(entry.name) && entry.file ? `${name} (${entry.file})` : name
+      );
       i += count;
     }
     return labels;
@@ -264,12 +283,9 @@
     const tag = `<${d.tag}>`;
     if (!c) return `${tag} \xB7 ${d.selector}`;
     const entries = c.chain.length > 0 ? c.chain : [{ name: c.name, file: c.file }];
-    const breadcrumb = collapseConsecutive([...entries].reverse()).join(" \u203A ");
-    if (d.sourceLoc) {
-      const l = d.sourceLoc;
-      return `${breadcrumb} \u203A ${tag} ${l.startLine}:${l.startColumn}-${l.endLine}:${l.endColumn}`;
-    }
-    return `${breadcrumb} \u203A ${tag}`;
+    const chain = chainLabels([...entries].reverse()).join(" \u203A ");
+    const target = d.sourceLoc ? formatSourceLoc(d.sourceLoc) : c.file;
+    return target ? `${tag} \xB7 ${target} \xB7 in ${chain}` : `${tag} \xB7 in ${chain}`;
   }
 
   // node_modules/.pnpm/modern-screenshot@4.7.0/node_modules/modern-screenshot/dist/index.mjs

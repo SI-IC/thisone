@@ -109,7 +109,7 @@ try {
   );
 
   await check(
-    "root-mount path mode includes the memo()-wrapped component's own file in the breadcrumb",
+    "root-mount path mode leads with the memo()-wrapped component's own file, then the chain",
     async () => {
       await settingsHeader.click();
       await pathModeRoot.waitFor({ state: "visible", timeout: 2000 });
@@ -118,7 +118,7 @@ try {
       const text = await pathEl.textContent();
       assert.match(
         text ?? "",
-        /^App \(.*App\.tsx\) › Counter \(.*Counter\.tsx\) › MemoBadge \(.*MemoBadge\.tsx\) › <span>/,
+        /^<span> · .*MemoBadge\.tsx.* · in App › Counter › MemoBadge$/,
       );
       await pathModeTree.click();
       await settingsHeader.click();

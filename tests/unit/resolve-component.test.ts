@@ -165,7 +165,7 @@ describe("formatElementPath", () => {
 });
 
 describe("formatElementPathFromRoot", () => {
-  it("builds a root-to-leaf breadcrumb with per-level files and the tag's source location", () => {
+  it("leads with the target file and source location, then the root-to-leaf chain", () => {
     document.body.innerHTML =
       '<div data-src-loc="/proj/src/components/Counter.vue:12:3-12:45"></div>';
     const el = document.querySelector("div")!;
@@ -177,7 +177,7 @@ describe("formatElementPathFromRoot", () => {
       },
     };
     expect(formatElementPathFromRoot(el)).toBe(
-      "App (/proj/src/App.vue) › Counter (/proj/src/components/Counter.vue) › <div> 12:3-12:45",
+      "<div> · /proj/src/components/Counter.vue:12:3-12:45 · in App › Counter",
     );
   });
 
@@ -190,11 +190,11 @@ describe("formatElementPathFromRoot", () => {
       parent: null,
     };
     expect(formatElementPathFromRoot(el)).toBe(
-      "App (/proj/src/App.vue) › <div> 1:1-1:10",
+      "<div> · /proj/src/App.vue:1:1-1:10 · in App",
     );
   });
 
-  it("renders an ancestor without __file as a bare name (no parens)", () => {
+  it("keeps an ancestor without __file in the chain and takes the target file from its nearest filed ancestor", () => {
     document.body.innerHTML = "<span></span>";
     const el = document.querySelector("span")!;
     (el as any).__vueParentComponent = {
@@ -205,18 +205,20 @@ describe("formatElementPathFromRoot", () => {
       },
     };
     expect(formatElementPathFromRoot(el)).toBe(
-      "App (/proj/src/App.vue) › Inline › <span>",
+      "<span> · /proj/src/App.vue · in App › Inline",
     );
   });
 
-  it("omits the source-location suffix when data-src-loc is absent (empty)", () => {
+  it("falls back to the component file without line numbers when data-src-loc is absent (empty)", () => {
     document.body.innerHTML = "<i></i>";
     const el = document.querySelector("i")!;
     (el as any).__vueParentComponent = {
       type: { __file: "/proj/src/App.vue", name: "App" },
       parent: null,
     };
-    expect(formatElementPathFromRoot(el)).toBe("App (/proj/src/App.vue) › <i>");
+    expect(formatElementPathFromRoot(el)).toBe(
+      "<i> · /proj/src/App.vue · in App",
+    );
   });
 
   it("falls back to the CSS selector outside the Vue/React app (no component)", () => {
@@ -236,7 +238,7 @@ describe("formatElementPathFromRoot", () => {
       return: { type: App, return: null },
     };
     expect(formatElementPathFromRoot(el)).toBe(
-      "App (/src/App.tsx) › Counter (/src/components/Counter.tsx) › <button>",
+      "<button> · /src/components/Counter.tsx · in App › Counter",
     );
   });
 
@@ -244,7 +246,7 @@ describe("formatElementPathFromRoot", () => {
     const el = document.createElement("span");
     (el as any).__reactFiber$anon = { type: "span", return: null };
     expect(formatElementPath(el)).toBe("<span> · Anonymous");
-    expect(formatElementPathFromRoot(el)).toBe("Anonymous › <span>");
+    expect(formatElementPathFromRoot(el)).toBe("<span> · in Anonymous");
   });
 
   it("collapses consecutive identical ancestors (recursive component) into a single Name ×N entry", () => {
@@ -265,7 +267,7 @@ describe("formatElementPathFromRoot", () => {
     };
     (el as any).__vueParentComponent = node1;
     expect(formatElementPathFromRoot(el)).toBe(
-      "App (/src/App.vue) › TreeNode ×3 (/src/TreeNode.vue) › <li>",
+      "<li> · /src/TreeNode.vue · in App › TreeNode ×3",
     );
   });
 
@@ -277,7 +279,50 @@ describe("formatElementPathFromRoot", () => {
     const aAgain = { type: { __file: "/src/App.vue", name: "App" }, parent: b };
     (el as any).__vueParentComponent = aAgain;
     expect(formatElementPathFromRoot(el)).toBe(
-      "App (/src/App.vue) › B (/src/B.vue) › App (/src/App.vue) › <span>",
+      "<span> · /src/App.vue · in App › B › App",
+    );
+  });
+
+  it("targets the data-src-loc file, not the nearest component's, for slotted markup authored in a parent", () => {
+    document.body.innerHTML =
+      '<em data-src-loc="/proj/src/App.vue:9:5-9:30"></em>';
+    const el = document.querySelector("em")!;
+    (el as any).__vueParentComponent = {
+      type: { __file: "/proj/src/Card.vue", name: "Card" },
+      parent: {
+        type: { __file: "/proj/src/App.vue", name: "App" },
+        parent: null,
+      },
+    };
+    expect(formatElementPathFromRoot(el)).toBe(
+      "<em> · /proj/src/App.vue:9:5-9:30 · in App › Card",
+    );
+  });
+
+  it("appends files only to same-named chain entries backed by different files (disambiguation)", () => {
+    document.body.innerHTML =
+      '<div data-src-loc="/src/app/Nav.vue:12:3-12:9"></div>';
+    const el = document.querySelector("div")!;
+    const app = { type: { __file: "/src/App.vue", name: "App" }, parent: null };
+    const outer = {
+      type: { __file: "/src/marketing/Layout.vue", name: "Layout" },
+      parent: app,
+    };
+    const header = {
+      type: { __file: "/src/Header.vue", name: "Header" },
+      parent: outer,
+    };
+    const inner = {
+      type: { __file: "/src/app/Layout.vue", name: "Layout" },
+      parent: header,
+    };
+    const nav = {
+      type: { __file: "/src/app/Nav.vue", name: "Nav" },
+      parent: inner,
+    };
+    (el as any).__vueParentComponent = nav;
+    expect(formatElementPathFromRoot(el)).toBe(
+      "<div> · /src/app/Nav.vue:12:3-12:9 · in App › Layout (/src/marketing/Layout.vue) › Header › Layout (/src/app/Layout.vue) › Nav",
     );
   });
 

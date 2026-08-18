@@ -143,19 +143,37 @@ export function describeElement(el: Element): ElementDescriptor {
  * @param el - DOM element to format
  * @returns formatted path text, degrades gracefully when sourceLoc or component is unavailable
  */
+function formatSourceLoc(l: SourceLocation): string {
+  return `${l.file}:${l.startLine}:${l.startColumn}-${l.endLine}:${l.endColumn}`;
+}
+
 export function formatElementPath(el: Element): string {
   const d = describeElement(el);
   const c = resolveComponent(el);
   const tag = `<${d.tag}>`;
   if (!c) return `${tag} · ${d.selector}`;
   if (d.sourceLoc) {
-    const l = d.sourceLoc;
-    return `${tag} · ${c.name} · ${l.file}:${l.startLine}:${l.startColumn}-${l.endLine}:${l.endColumn}`;
+    return `${tag} · ${c.name} · ${formatSourceLoc(d.sourceLoc)}`;
   }
   return c.file ? `${tag} · ${c.name} (${c.file})` : `${tag} · ${c.name}`;
 }
 
-function collapseConsecutive(entries: ChainEntry[]): string[] {
+function namesBackedByMultipleFiles(entries: ChainEntry[]): Set<string> {
+  const filesByName = new Map<string, Set<string | null>>();
+  for (const entry of entries) {
+    const files = filesByName.get(entry.name) ?? new Set<string | null>();
+    files.add(entry.file);
+    filesByName.set(entry.name, files);
+  }
+  const ambiguous = new Set<string>();
+  for (const [name, files] of filesByName) {
+    if (files.size > 1) ambiguous.add(name);
+  }
+  return ambiguous;
+}
+
+function chainLabels(entries: ChainEntry[]): string[] {
+  const ambiguous = namesBackedByMultipleFiles(entries);
   const labels: string[] = [];
   let i = 0;
   while (i < entries.length) {
@@ -169,21 +187,31 @@ function collapseConsecutive(entries: ChainEntry[]): string[] {
       count++;
     }
     const name = count > 1 ? `${entry.name} ×${count}` : entry.name;
-    labels.push(entry.file ? `${name} (${entry.file})` : name);
+    labels.push(
+      ambiguous.has(entry.name) && entry.file
+        ? `${name} (${entry.file})`
+        : name,
+    );
     i += count;
   }
   return labels;
 }
 
 /**
- * Formats the element's component chain from the root component down to the
- * picked element: `Name (file) › ... › <tag> startLine:startCol-endLine:endCol`.
- * Ancestors without a resolvable `__file` render as a bare name. Consecutive
- * identical ancestors (recursive components) collapse into `Name ×N (file)`.
- * Falls back to the same CSS-selector format as `formatElementPath` when no
- * component resolves.
+ * Formats the picked element as an edit target followed by its component chain:
+ * `<tag> · file:startLine:startCol-endLine:endCol · in Root › ... › Leaf`.
+ * The target file leads so the agent never has to guess which of the chain's
+ * components to edit; the chain carries names only (no paths) as context.
+ * Degrades to the component file without line numbers when `data-src-loc` is
+ * absent, drops the file section when nothing resolves one, and falls back to
+ * the same CSS-selector format as `formatElementPath` when no component resolves.
+ * For slotted markup the target is the `data-src-loc` file (where the markup is
+ * authored), which may differ from the nearest component's file in the chain.
+ * Consecutive identical ancestors (recursive components) collapse into `Name ×N`.
+ * Chain entries carry their file only when the same name is backed by more than
+ * one file in the chain.
  * @param el - DOM element to format
- * @returns root-to-leaf breadcrumb text
+ * @returns target-first path text with a root-to-leaf chain
  */
 export function formatElementPathFromRoot(el: Element): string {
   const d = describeElement(el);
@@ -193,11 +221,9 @@ export function formatElementPathFromRoot(el: Element): string {
 
   const entries: ChainEntry[] =
     c.chain.length > 0 ? c.chain : [{ name: c.name, file: c.file }];
-  const breadcrumb = collapseConsecutive([...entries].reverse()).join(" › ");
+  const chain = chainLabels([...entries].reverse()).join(" › ");
 
-  if (d.sourceLoc) {
-    const l = d.sourceLoc;
-    return `${breadcrumb} › ${tag} ${l.startLine}:${l.startColumn}-${l.endLine}:${l.endColumn}`;
-  }
-  return `${breadcrumb} › ${tag}`;
+  const target = d.sourceLoc ? formatSourceLoc(d.sourceLoc) : c.file;
+
+  return target ? `${tag} · ${target} · in ${chain}` : `${tag} · in ${chain}`;
 }

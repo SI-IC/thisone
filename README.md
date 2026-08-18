@@ -139,8 +139,9 @@ move it around the viewport perimeter. Both survive a reload.
 Click "Settings" to expand or collapse a panel of picker options; the expanded/collapsed state is
 remembered. It holds:
 
-- **Path mode** — "File tree" shows the path from the project root; "From root component" shows the
-  component chain instead (e.g. `App > Counter`).
+- **Path mode** — "File tree" shows the path from the project root; "From root component" adds the
+  component chain after it — `<div> · /home/you/shop/src/Counter.vue:12:3-12:45 · in App › Counter`
+  — so the agent gets the file to edit first and the surrounding component tree as context.
 - **Show element screenshot** — on by default; turning it off skips capture entirely. When on, the
   padding around the element (default 30px) is configurable.
 

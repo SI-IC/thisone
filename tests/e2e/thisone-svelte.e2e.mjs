@@ -90,7 +90,7 @@ try {
   );
 
   await check(
-    "root-mount path mode shows the full breadcrumb, skipping the {#if} frame between App and Panel",
+    "root-mount path mode leads with the target file, then the full chain, skipping the {#if} frame between App and Panel",
     async () => {
       await settingsHeader.click();
       await pathModeRoot.waitFor({ state: "visible", timeout: 2000 });
@@ -99,7 +99,7 @@ try {
       const text = await pathEl.textContent();
       assert.match(
         text ?? "",
-        /^App \(.*App\.svelte\) › Panel \(.*Panel\.svelte\) › Counter \(.*Counter\.svelte\) › <button>/,
+        /^<button> · .*Counter\.svelte.* · in App › Panel › Counter$/,
       );
       await pathModeTree.click();
       await settingsHeader.click();
