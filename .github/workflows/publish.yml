@@ -28,6 +28,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: install example app dependencies
+        run: |
+          for dir in examples/*/; do
+            pnpm --dir "$dir" install --frozen-lockfile
+          done
+
       - run: pnpm test:run
 
       - run: pnpm build
