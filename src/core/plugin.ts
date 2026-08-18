@@ -14,6 +14,22 @@ import { buildInjectionScript } from "./html-inject.js";
 
 export interface ThisoneOptions {
   hotkey?: string;
+  enabled?: boolean;
+}
+
+export function isEnabled(
+  options: ThisoneOptions,
+  bundlerSaysDev: boolean,
+): boolean {
+  return options.enabled ?? bundlerSaysDev;
+}
+
+export function warnWhenModeUnknown(options: ThisoneOptions): void {
+  if (options.enabled === undefined && !process.env.NODE_ENV) {
+    console.warn(
+      "[thisone] NODE_ENV is not set — staying off so the dev overlay cannot reach a production bundle. Pass enabled: true for dev builds.",
+    );
+  }
 }
 
 const here = dirname(fileURLToPath(import.meta.url));

@@ -4,8 +4,10 @@ import {
   thisonePlugin,
   detectPreact,
   buildInjectionTags,
+  isEnabled,
   type ThisoneOptions,
 } from "../core/plugin.js";
+import { escapeAttr } from "../plugin/escape-attr.js";
 
 export type { ThisoneOptions };
 
@@ -17,7 +19,7 @@ function renderTags(hotkey: string, hasPreact: boolean): string {
       const attrs = t.attrs
         ? " " +
           Object.entries(t.attrs)
-            .map(([k, v]) => `${k}="${v}"`)
+            .map(([k, v]) => `${k}="${escapeAttr(v)}"`)
             .join(" ")
         : "";
       return `<${t.tag}${attrs}>${t.children}</${t.tag}>`;
@@ -28,14 +30,16 @@ function renderTags(hotkey: string, hasPreact: boolean): string {
 export function thisoneRspack(
   options: ThisoneOptions = {},
 ): RspackPluginInstance {
+  if (options.enabled === false) return { apply() {} };
+
   const hotkey = options.hotkey ?? "KeyC";
   const base = thisonePlugin.rspack(options);
 
   return {
     apply(compiler: Compiler) {
-      base.apply(compiler);
+      if (!isEnabled(options, compiler.options.mode === "development")) return;
 
-      if (compiler.options.mode === "production") return;
+      base.apply(compiler);
 
       const hasPreact = detectPreact(compiler.context);
 

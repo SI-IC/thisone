@@ -128,9 +128,24 @@ Both are plain clipboard writes. Nothing is uploaded, nothing is stored.
 thisone({ hotkey: "KeyB" }); // Alt+B instead of Alt+C
 ```
 
-| Option   | Type     | Default  | Meaning                                                                                                                                                   |
-| -------- | -------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `hotkey` | `string` | `"KeyC"` | [`KeyboardEvent.code`](https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_code_values) that opens the picker together with **Alt** |
+| Option    | Type      | Default  | Meaning                                                                                                                                                   |
+| --------- | --------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hotkey`  | `string`  | `"KeyC"` | [`KeyboardEvent.code`](https://developer.mozilla.org/en-US/docs/Web/API/UI_Events/Keyboard_event_code_values) that opens the picker together with **Alt** |
+| `enabled` | `boolean` | dev only | Overrides the dev detection below in both directions                                                                                                      |
+
+### Production output
+
+The overlay and the `data-src-loc` source transform only run when the bundler says the build is a
+development one — an unknown mode counts as production, so nothing leaks by accident:
+
+| Bundler         | Runs when                                | Notes                                                      |
+| --------------- | ---------------------------------------- | ---------------------------------------------------------- |
+| Vite            | dev server (`apply: "serve"`)            | `enabled: true` cannot force it into `vite build`          |
+| webpack, Rspack | `mode === "development"`                 | unset `mode` and `mode: "none"` are treated as production  |
+| Rollup, esbuild | `process.env.NODE_ENV === "development"` | these bundlers have no mode of their own; warns when unset |
+
+Rollup and esbuild builds that don't set `NODE_ENV` print a one-line warning and stay off — pass
+`enabled: true` for those dev builds, `enabled: false` to switch the plugin off anywhere.
 
 The panel is draggable and remembers where you left it. The icon button in its header enables an
 edge-docked quick-access button — off by default, always on screen once enabled, right-click-drag to

@@ -9,6 +9,15 @@ describe("buildInjectionScript", () => {
     );
   });
 
+  it("escapes < so a hotkey cannot close the inline script tag (hostile input)", () => {
+    const out = buildInjectionScript(
+      { hotkey: "</script><script>alert(1)</script>" },
+      "x();",
+    );
+    expect(out).not.toContain("</script>");
+    expect(out).toContain("\\u003c/script>");
+  });
+
   it("serializes an empty config as {}", () => {
     const out = buildInjectionScript({}, "x();");
     expect(out).toBe("window.__THISONE_CFG__={};\nx();");

@@ -9,6 +9,10 @@ import {
 export type { ThisoneOptions };
 
 export function thisone(options: ThisoneOptions = {}): Plugin {
+  if (options.enabled === false) {
+    return { name: "vite-plugin-thisone", apply: "serve" };
+  }
+
   const hotkey = options.hotkey ?? "KeyC";
   let isBuild = false;
   let hasPreact = false;

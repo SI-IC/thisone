@@ -2,6 +2,8 @@ import type { Plugin } from "rollup";
 import {
   thisonePlugin,
   loadClientBundle,
+  isEnabled,
+  warnWhenModeUnknown,
   type ThisoneOptions,
 } from "../core/plugin.js";
 import { buildInjectionScript } from "../core/html-inject.js";
@@ -9,6 +11,11 @@ import { buildInjectionScript } from "../core/html-inject.js";
 export type { ThisoneOptions };
 
 export function thisoneRollup(options: ThisoneOptions = {}): Plugin {
+  warnWhenModeUnknown(options);
+  if (!isEnabled(options, process.env.NODE_ENV === "development")) {
+    return { name: "thisone-rollup" };
+  }
+
   const hotkey = options.hotkey ?? "KeyC";
   const base = thisonePlugin.rollup(options) as Plugin;
 

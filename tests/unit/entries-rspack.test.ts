@@ -4,8 +4,8 @@ import thisoneRspack from "../../src/entries/rspack";
 
 const PLUGIN_NAME = "thisone-rspack";
 
-function realCompiler(mode: "development" | "production") {
-  return rspack({ mode, entry: {} });
+function realCompiler(mode?: "development" | "production" | "none") {
+  return rspack(mode ? { mode, entry: {} } : { entry: {} });
 }
 
 function fakeCompilation() {
@@ -34,6 +34,36 @@ describe("thisoneRspack", () => {
       (t) => t.name === PLUGIN_NAME,
     );
     expect(tap).toBeUndefined();
+  });
+
+  it("registers the source-location transform loader in development mode", () => {
+    const compiler = realCompiler("development");
+    thisoneRspack().apply(compiler);
+    expect(compiler.options.module.rules.length).toBeGreaterThan(0);
+  });
+
+  it("does not register the source-location transform loader in production mode", () => {
+    const compiler = realCompiler("production");
+    thisoneRspack().apply(compiler);
+    expect(compiler.options.module.rules.length).toBe(0);
+  });
+
+  it("registers nothing in development when enabled is false (explicit off-switch)", () => {
+    const compiler = realCompiler("development");
+    thisoneRspack({ enabled: false }).apply(compiler);
+    expect(compiler.options.module.rules.length).toBe(0);
+    expect(
+      compiler.hooks.compilation.taps.find((t) => t.name === PLUGIN_NAME),
+    ).toBeUndefined();
+  });
+
+  it("registers nothing when mode is left unset (rspack builds as production)", () => {
+    const compiler = realCompiler();
+    thisoneRspack().apply(compiler);
+    expect(compiler.options.module.rules.length).toBe(0);
+    expect(
+      compiler.hooks.compilation.taps.find((t) => t.name === PLUGIN_NAME),
+    ).toBeUndefined();
   });
 
   it("registers a processAssets hook on the compilation", () => {

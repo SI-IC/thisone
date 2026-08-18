@@ -39494,11 +39494,15 @@ window.__THISONE_PREACT_FRAGMENT__ = Fragment;
 
 // src/core/html-inject.ts
 function buildInjectionScript(cfg, clientBundle) {
-  return `window.__THISONE_CFG__=${JSON.stringify(cfg)};
+  const json = JSON.stringify(cfg).replace(/</g, "\\u003c");
+  return `window.__THISONE_CFG__=${json};
 ${clientBundle}`;
 }
 
 // src/core/plugin.ts
+function isEnabled(options, bundlerSaysDev) {
+  return options.enabled ?? bundlerSaysDev;
+}
 var here = dirname(fileURLToPath(import.meta.url));
 function loadClientBundle() {
   const candidates = [
@@ -39576,17 +39580,19 @@ var thisonePlugin = createUnplugin(
 var PLUGIN_NAME = "thisone-rspack";
 function renderTags(hotkey, hasPreact) {
   return buildInjectionTags(hotkey, hasPreact).map((t) => {
-    const attrs = t.attrs ? " " + Object.entries(t.attrs).map(([k, v]) => `${k}="${v}"`).join(" ") : "";
+    const attrs = t.attrs ? " " + Object.entries(t.attrs).map(([k, v]) => `${k}="${escapeAttr(v)}"`).join(" ") : "";
     return `<${t.tag}${attrs}>${t.children}</${t.tag}>`;
   }).join("\n");
 }
 function thisoneRspack(options = {}) {
+  if (options.enabled === false) return { apply() {
+  } };
   const hotkey = options.hotkey ?? "KeyC";
   const base = thisonePlugin.rspack(options);
   return {
     apply(compiler) {
+      if (!isEnabled(options, compiler.options.mode === "development")) return;
       base.apply(compiler);
-      if (compiler.options.mode === "production") return;
       const hasPreact = detectPreact(compiler.context);
       compiler.hooks.compilation.tap(PLUGIN_NAME, (compilation) => {
         compilation.hooks.processAssets.tap(

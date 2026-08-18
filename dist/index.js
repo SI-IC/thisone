@@ -39491,7 +39491,8 @@ window.__THISONE_PREACT_FRAGMENT__ = Fragment;
 
 // src/core/html-inject.ts
 function buildInjectionScript(cfg, clientBundle) {
-  return `window.__THISONE_CFG__=${JSON.stringify(cfg)};
+  const json = JSON.stringify(cfg).replace(/</g, "\\u003c");
+  return `window.__THISONE_CFG__=${json};
 ${clientBundle}`;
 }
 
@@ -39571,6 +39572,9 @@ var thisonePlugin = createUnplugin(
 
 // src/entries/vite.ts
 function thisone(options = {}) {
+  if (options.enabled === false) {
+    return { name: "vite-plugin-thisone", apply: "serve" };
+  }
   const hotkey = options.hotkey ?? "KeyC";
   let isBuild = false;
   let hasPreact = false;

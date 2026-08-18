@@ -39491,11 +39491,22 @@ window.__THISONE_PREACT_FRAGMENT__ = Fragment;
 
 // src/core/html-inject.ts
 function buildInjectionScript(cfg, clientBundle) {
-  return `window.__THISONE_CFG__=${JSON.stringify(cfg)};
+  const json = JSON.stringify(cfg).replace(/</g, "\\u003c");
+  return `window.__THISONE_CFG__=${json};
 ${clientBundle}`;
 }
 
 // src/core/plugin.ts
+function isEnabled(options, bundlerSaysDev) {
+  return options.enabled ?? bundlerSaysDev;
+}
+function warnWhenModeUnknown(options) {
+  if (options.enabled === void 0 && !process.env.NODE_ENV) {
+    console.warn(
+      "[thisone] NODE_ENV is not set \u2014 staying off so the dev overlay cannot reach a production bundle. Pass enabled: true for dev builds."
+    );
+  }
+}
 var here = dirname(fileURLToPath(import.meta.url));
 function loadClientBundle() {
   const candidates = [
@@ -39543,6 +39554,10 @@ var thisonePlugin = createUnplugin(
 
 // src/entries/rollup.ts
 function thisoneRollup(options = {}) {
+  warnWhenModeUnknown(options);
+  if (!isEnabled(options, process.env.NODE_ENV === "development")) {
+    return { name: "thisone-rollup" };
+  }
   const hotkey = options.hotkey ?? "KeyC";
   const base = thisonePlugin.rollup(options);
   return {

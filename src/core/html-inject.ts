@@ -6,5 +6,6 @@ export function buildInjectionScript(
   cfg: ThisoneRuntimeConfig,
   clientBundle: string,
 ): string {
-  return `window.__THISONE_CFG__=${JSON.stringify(cfg)};\n${clientBundle}`;
+  const json = JSON.stringify(cfg).replace(/</g, "\\u003c");
+  return `window.__THISONE_CFG__=${json};\n${clientBundle}`;
 }
