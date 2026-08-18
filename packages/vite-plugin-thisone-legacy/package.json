@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-thisone",
-  "version": "2.0.0",
+  "version": "3.1.0",
   "description": "Legacy alias — use @si-ic/thisone instead. Re-exports @si-ic/thisone/vite.",
   "type": "module",
   "license": "MIT",
@@ -18,9 +18,13 @@
   },
   "main": "./index.js",
   "types": "./index.d.ts",
-  "files": ["index.js", "index.d.ts", "README.md"],
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "README.md"
+  ],
   "dependencies": {
-    "@si-ic/thisone": "^2.0.0"
+    "@si-ic/thisone": "^3.0.0"
   },
   "peerDependencies": {
     "vite": ">=5"

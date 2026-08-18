@@ -24,12 +24,32 @@ export function isEnabled(
   return options.enabled ?? bundlerSaysDev;
 }
 
-export function warnWhenModeUnknown(options: ThisoneOptions): void {
-  if (options.enabled === undefined && !process.env.NODE_ENV) {
-    console.warn(
-      "[thisone] NODE_ENV is not set — staying off so the dev overlay cannot reach a production bundle. Pass enabled: true for dev builds.",
-    );
-  }
+export function nodeEnvSaysDev(watchMode = false): boolean {
+  const env = process.env.NODE_ENV;
+  return env ? env === "development" : watchMode;
+}
+
+export function warnWhenModeUnknown(
+  options: ThisoneOptions,
+  active: boolean,
+): void {
+  if (options.enabled !== undefined || process.env.NODE_ENV) return;
+  console.warn(
+    active
+      ? "[thisone] NODE_ENV is not set — injecting the dev overlay because the bundler is in watch mode. Set NODE_ENV=production or enabled: false for production builds."
+      : "[thisone] NODE_ENV is not set — staying off so the dev overlay cannot reach a production bundle. Pass enabled: true for dev builds.",
+  );
+}
+
+export function callBaseHook(
+  base: Record<string, any>,
+  hook: string,
+  ctx: unknown,
+  args: unknown[],
+): unknown {
+  const raw = base[hook];
+  const handler = typeof raw === "function" ? raw : raw?.handler;
+  return handler?.apply(ctx, args);
 }
 
 const here = dirname(fileURLToPath(import.meta.url));

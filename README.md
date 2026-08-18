@@ -138,14 +138,16 @@ thisone({ hotkey: "KeyB" }); // Alt+B instead of Alt+C
 The overlay and the `data-src-loc` source transform only run when the bundler says the build is a
 development one — an unknown mode counts as production, so nothing leaks by accident:
 
-| Bundler         | Runs when                                | Notes                                                      |
-| --------------- | ---------------------------------------- | ---------------------------------------------------------- |
-| Vite            | dev server (`apply: "serve"`)            | `enabled: true` cannot force it into `vite build`          |
-| webpack, Rspack | `mode === "development"`                 | unset `mode` and `mode: "none"` are treated as production  |
-| Rollup, esbuild | `process.env.NODE_ENV === "development"` | these bundlers have no mode of their own; warns when unset |
+| Bundler         | Runs when                                                    | Notes                                                     |
+| --------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
+| Vite            | dev server (`apply: "serve"`)                                | `enabled: true` cannot force it into `vite build`         |
+| webpack, Rspack | `mode === "development"`                                     | unset `mode` and `mode: "none"` are treated as production |
+| Rollup          | `NODE_ENV === "development"`, or watch mode when it is unset | `rollup -c -w` counts as dev, a one-shot build does not   |
+| esbuild         | `NODE_ENV === "development"`                                 | esbuild exposes no watch signal to plugins                |
 
-Rollup and esbuild builds that don't set `NODE_ENV` print a one-line warning and stay off — pass
-`enabled: true` for those dev builds, `enabled: false` to switch the plugin off anywhere.
+A Rollup one-shot build or an esbuild build that doesn't set `NODE_ENV` prints a one-line warning
+and stays off — pass `enabled: true` for those dev builds, `enabled: false` to switch the plugin off
+anywhere.
 
 The panel is draggable and remembers where you left it. The icon button in its header enables an
 edge-docked quick-access button — off by default, always on screen once enabled, right-click-drag to

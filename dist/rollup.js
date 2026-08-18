@@ -39500,12 +39500,20 @@ ${clientBundle}`;
 function isEnabled(options, bundlerSaysDev) {
   return options.enabled ?? bundlerSaysDev;
 }
-function warnWhenModeUnknown(options) {
-  if (options.enabled === void 0 && !process.env.NODE_ENV) {
-    console.warn(
-      "[thisone] NODE_ENV is not set \u2014 staying off so the dev overlay cannot reach a production bundle. Pass enabled: true for dev builds."
-    );
-  }
+function nodeEnvSaysDev(watchMode = false) {
+  const env = process.env.NODE_ENV;
+  return env ? env === "development" : watchMode;
+}
+function warnWhenModeUnknown(options, active) {
+  if (options.enabled !== void 0 || process.env.NODE_ENV) return;
+  console.warn(
+    active ? "[thisone] NODE_ENV is not set \u2014 injecting the dev overlay because the bundler is in watch mode. Set NODE_ENV=production or enabled: false for production builds." : "[thisone] NODE_ENV is not set \u2014 staying off so the dev overlay cannot reach a production bundle. Pass enabled: true for dev builds."
+  );
+}
+function callBaseHook(base, hook, ctx, args) {
+  const raw = base[hook];
+  const handler = typeof raw === "function" ? raw : raw?.handler;
+  return handler?.apply(ctx, args);
 }
 var here = dirname(fileURLToPath(import.meta.url));
 function loadClientBundle() {
@@ -39554,17 +39562,38 @@ var thisonePlugin = createUnplugin(
 
 // src/entries/rollup.ts
 function thisoneRollup(options = {}) {
-  warnWhenModeUnknown(options);
-  if (!isEnabled(options, process.env.NODE_ENV === "development")) {
-    return { name: "thisone-rollup" };
-  }
+  if (options.enabled === false) return { name: "thisone-rollup" };
   const hotkey = options.hotkey ?? "KeyC";
   const base = thisonePlugin.rollup(options);
+  let warned = false;
+  const activeIn = (ctx) => isEnabled(options, nodeEnvSaysDev(ctx?.meta?.watchMode === true));
+  const callBase = (hook, ctx, args) => callBaseHook(base, hook, ctx, args);
   return {
-    ...base,
     name: "thisone-rollup",
+    enforce: base.enforce,
+    buildStart(buildOptions) {
+      const active = activeIn(this);
+      if (!warned) {
+        warned = true;
+        warnWhenModeUnknown(options, active);
+      }
+      if (!active) return null;
+      return callBase("buildStart", this, [buildOptions]);
+    },
+    transform(code2, id) {
+      if (!activeIn(this)) return null;
+      return callBase("transform", this, [code2, id]);
+    },
+    resolveId(id, importer, resolveOptions) {
+      if (!activeIn(this)) return null;
+      return callBase("resolveId", this, [id, importer, resolveOptions]);
+    },
+    load(id) {
+      if (!activeIn(this)) return null;
+      return callBase("load", this, [id]);
+    },
     renderChunk(code2, chunk) {
-      if (!chunk.isEntry) return null;
+      if (!activeIn(this) || !chunk.isEntry) return null;
       const banner = buildInjectionScript({ hotkey }, loadClientBundle());
       return { code: `${banner}
 ${code2}`, map: null };

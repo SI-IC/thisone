@@ -39500,12 +39500,15 @@ ${clientBundle}`;
 function isEnabled(options, bundlerSaysDev) {
   return options.enabled ?? bundlerSaysDev;
 }
-function warnWhenModeUnknown(options) {
-  if (options.enabled === void 0 && !process.env.NODE_ENV) {
-    console.warn(
-      "[thisone] NODE_ENV is not set \u2014 staying off so the dev overlay cannot reach a production bundle. Pass enabled: true for dev builds."
-    );
-  }
+function nodeEnvSaysDev(watchMode = false) {
+  const env = process.env.NODE_ENV;
+  return env ? env === "development" : watchMode;
+}
+function warnWhenModeUnknown(options, active) {
+  if (options.enabled !== void 0 || process.env.NODE_ENV) return;
+  console.warn(
+    active ? "[thisone] NODE_ENV is not set \u2014 injecting the dev overlay because the bundler is in watch mode. Set NODE_ENV=production or enabled: false for production builds." : "[thisone] NODE_ENV is not set \u2014 staying off so the dev overlay cannot reach a production bundle. Pass enabled: true for dev builds."
+  );
 }
 var here = dirname(fileURLToPath(import.meta.url));
 function loadClientBundle() {
@@ -39554,8 +39557,8 @@ var thisonePlugin = createUnplugin(
 
 // src/entries/esbuild.ts
 function thisoneEsbuild(options = {}) {
-  warnWhenModeUnknown(options);
-  if (!isEnabled(options, process.env.NODE_ENV === "development")) {
+  warnWhenModeUnknown(options, false);
+  if (!isEnabled(options, nodeEnvSaysDev())) {
     return { name: "thisone-esbuild", setup() {
     } };
   }

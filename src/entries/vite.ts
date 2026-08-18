@@ -3,6 +3,7 @@ import {
   thisonePlugin,
   detectPreact,
   buildInjectionTags,
+  callBaseHook,
   type ThisoneOptions,
 } from "../core/plugin.js";
 
@@ -34,9 +35,7 @@ export function thisone(options: ThisoneOptions = {}): Plugin {
 
     transform(code: string, id: string) {
       if (isBuild) return;
-      const raw = base.transform;
-      const handler = typeof raw === "function" ? raw : raw?.handler;
-      return handler?.call(this, code, id);
+      return callBaseHook(base, "transform", this, [code, id]);
     },
 
     transformIndexHtml: {

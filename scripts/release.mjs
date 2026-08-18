@@ -33,4 +33,14 @@ const pkg = JSON.parse(readFileSync(PKG_PATH, "utf8"));
 const next = bump(pkg.version, level);
 pkg.version = next;
 writeFileSync(PKG_PATH, JSON.stringify(pkg, null, 2) + "\n");
+
+const ALIAS_PATH = resolve(
+  ROOT,
+  "packages/vite-plugin-thisone-legacy/package.json",
+);
+const alias = JSON.parse(readFileSync(ALIAS_PATH, "utf8"));
+alias.version = next;
+alias.dependencies["@si-ic/thisone"] = `^${next.split(".")[0]}.0.0`;
+writeFileSync(ALIAS_PATH, JSON.stringify(alias, null, 2) + "\n");
+
 console.log(`release: bumped to ${next} (${level})`);

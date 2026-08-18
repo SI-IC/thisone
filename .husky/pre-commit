@@ -15,4 +15,4 @@ fi
 
 pnpm build
 
-git add dist package.json
+git add dist package.json packages/vite-plugin-thisone-legacy/package.json

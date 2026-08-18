@@ -3,6 +3,7 @@ import {
   thisonePlugin,
   loadClientBundle,
   isEnabled,
+  nodeEnvSaysDev,
   warnWhenModeUnknown,
   type ThisoneOptions,
 } from "../core/plugin.js";
@@ -11,8 +12,8 @@ import { buildInjectionScript } from "../core/html-inject.js";
 export type { ThisoneOptions };
 
 export function thisoneEsbuild(options: ThisoneOptions = {}): Plugin {
-  warnWhenModeUnknown(options);
-  if (!isEnabled(options, process.env.NODE_ENV === "development")) {
+  warnWhenModeUnknown(options, false);
+  if (!isEnabled(options, nodeEnvSaysDev())) {
     return { name: "thisone-esbuild", setup() {} };
   }
 

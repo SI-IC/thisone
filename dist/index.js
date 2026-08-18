@@ -39497,6 +39497,11 @@ ${clientBundle}`;
 }
 
 // src/core/plugin.ts
+function callBaseHook(base, hook, ctx, args) {
+  const raw = base[hook];
+  const handler = typeof raw === "function" ? raw : raw?.handler;
+  return handler?.apply(ctx, args);
+}
 var here = dirname(fileURLToPath(import.meta.url));
 function loadClientBundle() {
   const candidates = [
@@ -39591,9 +39596,7 @@ function thisone(options = {}) {
     },
     transform(code2, id) {
       if (isBuild) return;
-      const raw = base.transform;
-      const handler = typeof raw === "function" ? raw : raw?.handler;
-      return handler?.call(this, code2, id);
+      return callBaseHook(base, "transform", this, [code2, id]);
     },
     transformIndexHtml: {
       order: "pre",
